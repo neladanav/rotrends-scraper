@@ -3,12 +3,17 @@ name: RoTrends Scraper
 on:
   workflow_dispatch:
 
+concurrency:
+  group: scraper-group
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -37,4 +42,5 @@ jobs:
           git config --global user.email 'action@github.com'
           git add seen_games.json || echo "No seen_games file yet"
           git commit -m "Update seen games list" || echo "No new games to save"
+          git pull --rebase origin main
           git push
