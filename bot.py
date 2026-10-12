@@ -62,14 +62,15 @@ def main():
             
             try:
                 web_page.goto(target_url, timeout=30000)
-                # Restored your original 3.5s sleep to ensure React table renders
                 web_page.wait_for_timeout(3500)
-                web_page.wait_for_selector("table tbody tr", timeout=10000)
+                # FIX: Added .ant-table-row to skip the hidden measuring row
+                web_page.wait_for_selector("table tbody tr.ant-table-row", timeout=10000)
             except Exception as e:
                 print(f"Failed to load table on page {page_num}. Error: {e}")
                 break
 
-            rows = web_page.locator("table tbody tr").all()
+            # FIX: Added .ant-table-row here to only grab actual data rows
+            rows = web_page.locator("table tbody tr.ant-table-row").all()
             print(f"Found {len(rows)} games on page {page_num}.")
             if not rows:
                 break
