@@ -15,7 +15,6 @@ def load_seen_games():
     return []
 
 def parse_number(text_val):
-    # Added .replace("+", "") to handle Roblox formatting like "16.8M+" or "12K+"
     text_val = text_val.strip().upper().replace(",", "").replace("+", "")
     if "K" in text_val: return float(text_val.replace("K", "")) * 1000
     if "M" in text_val: return float(text_val.replace("M", "")) * 1000000
@@ -31,25 +30,25 @@ def determine_tier(visits, active):
     return None
 
 def verify_roblox_visits(browser, url):
-    """Opens the actual Roblox page in a new tab to scrape the real visit count."""
     if not url or "search/experiences" in url:
-        return None # Cannot easily verify search URLs automatically
+        return None 
     
     verify_page = browser.new_page()
     try:
-        verify_page.goto(url)
-        # Wait a few seconds for the Roblox React UI to render the game stats
-        verify_page.wait_for_timeout(3500)
+        # TIMEOUT FIX: Don't wait forever, and only wait for the DOM, not images/network
+        verify_page.goto(url, timeout=10000, wait_until="domcontentloaded")
         
-        # Look for the list item that contains the text 'Visits' and grab the stat number next to it
+        # SMART WAIT: Instead of sleeping 3.5 seconds every time, wait up to 5s specifically for the text to appear
         locator = verify_page.locator("li:has-text('Visits') >> .text-lead")
+        locator.wait_for(timeout=5000)
+        
         if locator.count() > 0:
             text_val = locator.first.inner_text()
             return parse_number(text_val)
     except Exception as e:
         pass
     finally:
-        verify_page.close() # Always close the tab to free up memory
+        verify_page.close() 
         
     return None
 
@@ -63,15 +62,19 @@ def main():
 
         page_num = 1
         
-        # Continuously loop through pages until an empty page is found
-        while True:
+        # PAGE LIMIT: Only check the first 5 pages (up to 250 games max). 
+        # This guarantees the script will finish within your 10-minute window.
+        while page_num <= 5:
             target_url = f"{BASE_URL}{page_num}"
-            web_page.goto(target_url)
-            web_page.wait_for_timeout(3500)
+            
+            try:
+                web_page.goto(target_url, timeout=15000, wait_until="domcontentloaded")
+                # SMART WAIT: Wait for the table to load instead of sleeping 3.5s
+                web_page.wait_for_selector("table tbody tr", timeout=10000)
+            except Exception:
+                break # If page fails to load, stop scraping
 
             rows = web_page.locator("table tbody tr").all()
-            
-            # If no rows exist on this page, we've hit the end. Break the loop.
             if not rows:
                 break
 
@@ -79,6 +82,11 @@ def main():
                 cols = row.locator("td").all()
                 if len(cols) >= 5:
                     game_name = cols[0].inner_text().strip()
+
+                    # Skip games with missing names or excluded words immediately
+                    if "No data" in game_name or not game_name: continue
+                    if any(w in game_name.lower() for w in EXCLUSION_WORDS): continue
+                    if game_name in seen_games: continue
 
                     game_url = None
                     links = cols[0].locator("a")
@@ -95,35 +103,22 @@ def main():
                     active_text = cols[2].inner_text().strip()
                     favorites_text = cols[4].inner_text().strip()
 
-                    if "No data" in game_name or not game_name: continue
-                    if any(w in game_name.lower() for w in EXCLUSION_WORDS): continue
-                    if game_name in seen_games: continue
-
                     visits = parse_number(visits_text)
                     active = parse_number(active_text)
 
-                    # Skip games with broken 0 data from RoTrends
-                    if visits == 0: continue
-                    if visits > 500000: continue
+                    if visits == 0 or visits > 500000: continue
 
-                    # --- NEW: Verify real visits on Roblox directly ---
+                    # Verify real visits
                     real_visits = verify_roblox_visits(browser, game_url)
                     if real_visits is not None:
-                        # If the real Roblox visits are over 500k, eliminate the game entirely
                         if real_visits > 500000:
                             continue 
-                        
-                        # (Optional) We can override the RoTrends text with the real live number 
-                        # just to be accurate in your Discord embed
                         visits = real_visits
                         
-                    # Re-determine tier in case we overrode the visits with the live number
                     tier_data = determine_tier(visits, active)
-                    # --------------------------------------------------
                     
                     if tier_data:
                         title, award, color = tier_data
-
                         description = (
                             f"🎮 **Game:** `{game_name}`\n"
                             f"👤 **Creator:** Unknown\n\n"
@@ -133,11 +128,9 @@ def main():
                             f"{award}\n\n"
                             f"🔗 [Open on Roblox]({game_url})"
                         )
-
                         new_alerts.append({"title": title, "description": description, "color": color})
                         seen_games.append(game_name)
             
-            # Increment to check the next page
             page_num += 1
 
         browser.close()
@@ -146,6 +139,8 @@ def main():
         if WEBHOOK_URL:
             for embed in new_alerts:
                 requests.post(WEBHOOK_URL, json={"embeds": [embed]})
+        
+        # Save memory only after all games are processed
         with open(STATE_FILE, "w") as f:
             json.dump(seen_games, f)
 
