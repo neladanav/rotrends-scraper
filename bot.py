@@ -35,21 +35,16 @@ def verify_roblox_visits(browser, url):
     
     verify_page = browser.new_page()
     try:
-        # TIMEOUT FIX: Don't wait forever, and only wait for the DOM, not images/network
-        verify_page.goto(url, timeout=10000, wait_until="domcontentloaded")
-        
-        # SMART WAIT: Instead of sleeping 3.5 seconds every time, wait up to 5s specifically for the text to appear
+        verify_page.goto(url, timeout=20000)
         locator = verify_page.locator("li:has-text('Visits') >> .text-lead")
         locator.wait_for(timeout=5000)
-        
         if locator.count() > 0:
             text_val = locator.first.inner_text()
             return parse_number(text_val)
-    except Exception as e:
+    except Exception:
         pass
     finally:
         verify_page.close() 
-        
     return None
 
 def main():
@@ -59,22 +54,23 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         web_page = browser.new_page()
-
         page_num = 1
         
-        # PAGE LIMIT: Only check the first 5 pages (up to 250 games max). 
-        # This guarantees the script will finish within your 10-minute window.
         while page_num <= 5:
             target_url = f"{BASE_URL}{page_num}"
+            print(f"Loading page {page_num}...")
             
             try:
-                web_page.goto(target_url, timeout=15000, wait_until="domcontentloaded")
-                # SMART WAIT: Wait for the table to load instead of sleeping 3.5s
+                web_page.goto(target_url, timeout=30000)
+                # Restored your original 3.5s sleep to ensure React table renders
+                web_page.wait_for_timeout(3500)
                 web_page.wait_for_selector("table tbody tr", timeout=10000)
-            except Exception:
-                break # If page fails to load, stop scraping
+            except Exception as e:
+                print(f"Failed to load table on page {page_num}. Error: {e}")
+                break
 
             rows = web_page.locator("table tbody tr").all()
+            print(f"Found {len(rows)} games on page {page_num}.")
             if not rows:
                 break
 
@@ -83,7 +79,6 @@ def main():
                 if len(cols) >= 5:
                     game_name = cols[0].inner_text().strip()
 
-                    # Skip games with missing names or excluded words immediately
                     if "No data" in game_name or not game_name: continue
                     if any(w in game_name.lower() for w in EXCLUSION_WORDS): continue
                     if game_name in seen_games: continue
@@ -108,7 +103,6 @@ def main():
 
                     if visits == 0 or visits > 500000: continue
 
-                    # Verify real visits
                     real_visits = verify_roblox_visits(browser, game_url)
                     if real_visits is not None:
                         if real_visits > 500000:
@@ -135,14 +129,16 @@ def main():
 
         browser.close()
 
+    print(f"Total new matching games found this run: {len(new_alerts)}")
+
     if new_alerts:
         if WEBHOOK_URL:
             for embed in new_alerts:
                 requests.post(WEBHOOK_URL, json={"embeds": [embed]})
         
-        # Save memory only after all games are processed
         with open(STATE_FILE, "w") as f:
             json.dump(seen_games, f)
+        print(f"Successfully saved {len(seen_games)} games to {STATE_FILE}.")
 
 if __name__ == "__main__":
     main()
