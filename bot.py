@@ -56,7 +56,8 @@ def main():
         web_page = browser.new_page()
         page_num = 1
         
-        while page_num <= 5:
+        # Changed to 2 to ensure the script finishes within the 10-minute limit
+        while page_num <= 2:
             target_url = f"{BASE_URL}{page_num}"
             print(f"\n--- Loading page {page_num} ---")
             
@@ -100,7 +101,6 @@ def main():
                     visits = parse_number(visits_text)
                     active = parse_number(active_text)
                     
-                    # Print what the bot is seeing so you can adjust your tiers if needed
                     print(f"Checking: {game_name} | Visits: {visits} | CCU: {active}")
 
                     if visits == 0 or visits > 500000: continue
@@ -134,12 +134,10 @@ def main():
 
     print(f"\nTotal new matching games found this run: {len(new_alerts)}")
 
-    # Send webhooks only if there are new alerts
     if new_alerts and WEBHOOK_URL:
         for embed in new_alerts:
             requests.post(WEBHOOK_URL, json={"embeds": [embed]})
             
-    # ALWAYS save the state file, even if 0 games were found, so GitHub doesn't error out
     with open(STATE_FILE, "w") as f:
         json.dump(seen_games, f)
     print(f"Successfully saved {len(seen_games)} games to {STATE_FILE}.")
