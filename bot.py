@@ -58,18 +58,16 @@ def main():
         
         while page_num <= 5:
             target_url = f"{BASE_URL}{page_num}"
-            print(f"Loading page {page_num}...")
+            print(f"\n--- Loading page {page_num} ---")
             
             try:
                 web_page.goto(target_url, timeout=30000)
                 web_page.wait_for_timeout(3500)
-                # FIX: Added .ant-table-row to skip the hidden measuring row
                 web_page.wait_for_selector("table tbody tr.ant-table-row", timeout=10000)
             except Exception as e:
                 print(f"Failed to load table on page {page_num}. Error: {e}")
                 break
 
-            # FIX: Added .ant-table-row here to only grab actual data rows
             rows = web_page.locator("table tbody tr.ant-table-row").all()
             print(f"Found {len(rows)} games on page {page_num}.")
             if not rows:
@@ -101,6 +99,9 @@ def main():
 
                     visits = parse_number(visits_text)
                     active = parse_number(active_text)
+                    
+                    # Print what the bot is seeing so you can adjust your tiers if needed
+                    print(f"Checking: {game_name} | Visits: {visits} | CCU: {active}")
 
                     if visits == 0 or visits > 500000: continue
 
@@ -113,6 +114,7 @@ def main():
                     tier_data = determine_tier(visits, active)
                     
                     if tier_data:
+                        print(f"-> MATCH FOUND! {game_name} fits {tier_data[1]}")
                         title, award, color = tier_data
                         description = (
                             f"🎮 **Game:** `{game_name}`\n"
@@ -130,16 +132,17 @@ def main():
 
         browser.close()
 
-    print(f"Total new matching games found this run: {len(new_alerts)}")
+    print(f"\nTotal new matching games found this run: {len(new_alerts)}")
 
-    if new_alerts:
-        if WEBHOOK_URL:
-            for embed in new_alerts:
-                requests.post(WEBHOOK_URL, json={"embeds": [embed]})
-        
-        with open(STATE_FILE, "w") as f:
-            json.dump(seen_games, f)
-        print(f"Successfully saved {len(seen_games)} games to {STATE_FILE}.")
+    # Send webhooks only if there are new alerts
+    if new_alerts and WEBHOOK_URL:
+        for embed in new_alerts:
+            requests.post(WEBHOOK_URL, json={"embeds": [embed]})
+            
+    # ALWAYS save the state file, even if 0 games were found, so GitHub doesn't error out
+    with open(STATE_FILE, "w") as f:
+        json.dump(seen_games, f)
+    print(f"Successfully saved {len(seen_games)} games to {STATE_FILE}.")
 
 if __name__ == "__main__":
     main()
