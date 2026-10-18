@@ -1,6 +1,11 @@
 name: Discord Webhook Smoke Test
 
 on:
+  push:
+    branches:
+      - improve/scouting-reliability
+    paths:
+      - .github/workflows/discord-smoke-test.yml
   workflow_dispatch:
 
 permissions:
