@@ -294,9 +294,16 @@ def main():
                                 pass
                             for candidate in creator_candidates:
                                 cleaned = re.sub(r"^@", "", candidate).strip()
-                                if cleaned and cleaned.casefold() not in {
-                                    "[object object]", "object object", "unknown", "null", "none"
-                                }:
+                                # Some RoTrends table layouts put rating/score values in this
+                                # column rather than a creator. Never present a number as a name.
+                                looks_numeric = bool(re.fullmatch(r"[\\d,.+%KMBkmb\\s-]+", cleaned))
+                                if (
+                                    cleaned
+                                    and not looks_numeric
+                                    and cleaned.casefold() not in {
+                                        "[object object]", "object object", "unknown", "null", "none"
+                                    }
+                                ):
                                     creator = cleaned
                                     break
                         favorites_text = cols[4].inner_text().strip()
