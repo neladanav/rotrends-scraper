@@ -296,7 +296,7 @@ def main():
                                 cleaned = re.sub(r"^@", "", candidate).strip()
                                 # Some RoTrends table layouts put rating/score values in this
                                 # column rather than a creator. Never present a number as a name.
-                                looks_numeric = bool(re.fullmatch(r"[\\d,.+%KMBkmb\\s-]+", cleaned))
+                                looks_numeric = bool(re.fullmatch(r"[\d,.+%KMBkmb\s-]+", cleaned))
                                 if (
                                     cleaned
                                     and not looks_numeric
@@ -310,7 +310,7 @@ def main():
                         visits = parse_number(visits_text)
                         active = parse_number(active_text)
                         scanned_count += 1
-                        print(f"Checking: {game_name} | Creator: @{creator} | Visits: {visits:g} | CCU: {active:g}")
+                        creator_display = f"@{creator}" if creator != "Unknown" else "Unknown"\n                        print(f"Checking: {game_name} | Creator: {creator_display} | Visits: {visits:g} | CCU: {active:g}")
 
                         if visits <= 0 or visits > 500000:
                             continue
@@ -345,7 +345,7 @@ def main():
                         alert = {"title": title, "description": description, "color": color}
 
                         if DRY_RUN:
-                            print(f"[DRY RUN] Eligible: {game_name} | @{creator} | {award} | visits={visits:g} | CCU={active:g}")
+                            print(f"[DRY RUN] Eligible: {game_name} | {creator_display} | {award} | visits={visits:g} | CCU={active:g}")
                             continue
 
                         try:
