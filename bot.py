@@ -342,7 +342,7 @@ def main():
                         qualified_count += 1
                         description = (
                             f"🎮 **Game:** `{game_name}`\n"
-                            f"👤 **Creator:** {creator_display}\\n\\n"
+                            f"👤 **Creator:** {creator_display}\n\n"
                             f"👥 **CCU:** {active_text}\n"
                             f"👁️ **Visits:** {visits_text} ({reported_source} source)\n"
                             f"⭐ **Favorites:** {favorites_text}\n\n"
