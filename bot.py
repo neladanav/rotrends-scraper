@@ -270,11 +270,40 @@ def main():
 
                         visits_text = cols[1].inner_text().strip()
                         active_text = cols[2].inner_text().strip()
+                        creator = "Unknown"
+                        if len(cols) > 3:
+                            creator_cell = cols[3]
+                            creator_candidates = []
+                            try:
+                                creator_candidates.append(creator_cell.inner_text().strip())
+                            except Exception:
+                                pass
+                            try:
+                                creator_links = creator_cell.locator("a")
+                                for creator_index in range(creator_links.count()):
+                                    creator_link = creator_links.nth(creator_index)
+                                    for attr in ("aria-label", "title"):
+                                        attr_value = creator_link.get_attribute(attr)
+                                        if attr_value:
+                                            creator_candidates.append(attr_value.strip())
+                                    try:
+                                        creator_candidates.append(creator_link.inner_text().strip())
+                                    except Exception:
+                                        pass
+                            except Exception:
+                                pass
+                            for candidate in creator_candidates:
+                                cleaned = re.sub(r"^@", "", candidate).strip()
+                                if cleaned and cleaned.casefold() not in {
+                                    "[object object]", "object object", "unknown", "null", "none"
+                                }:
+                                    creator = cleaned
+                                    break
                         favorites_text = cols[4].inner_text().strip()
                         visits = parse_number(visits_text)
                         active = parse_number(active_text)
                         scanned_count += 1
-                        print(f"Checking: {game_name} | Visits: {visits:g} | CCU: {active:g}")
+                        print(f"Checking: {game_name} | Creator: @{creator} | Visits: {visits:g} | CCU: {active:g}")
 
                         if visits <= 0 or visits > 500000:
                             continue
@@ -309,7 +338,7 @@ def main():
                         alert = {"title": title, "description": description, "color": color}
 
                         if DRY_RUN:
-                            print(f"[DRY RUN] Eligible: {game_name} | {award} | visits={visits:g} | CCU={active:g}")
+                            print(f"[DRY RUN] Eligible: {game_name} | @{creator} | {award} | visits={visits:g} | CCU={active:g}")
                             continue
 
                         try:
