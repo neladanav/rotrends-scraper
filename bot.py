@@ -214,7 +214,15 @@ def main():
                             )
 
                         key = game_key(game_name, game_url)
-                        if key in seen_games or key in delivered_keys:
+                        # Match legacy name-only history as well as new stable-ID keys,
+                        # preventing a one-time duplicate burst after state migration.
+                        legacy_name_key = f"name:{_normalize_name(game_name)}"
+                        if (
+                            key in seen_games
+                            or legacy_name_key in seen_games
+                            or key in delivered_keys
+                            or legacy_name_key in delivered_keys
+                        ):
                             continue
 
                         visits_text = cols[1].inner_text().strip()
@@ -230,7 +238,7 @@ def main():
 
                         reported_source = "RoTrends"
                         real_visits = verify_roblox_visits(browser, game_url)
-                        if real_visits is not None:
+                        if real_visits is not None and real_visits > 0:
                             if real_visits > 500000:
                                 continue
                             visits = real_visits
