@@ -1,0 +1,39 @@
+name: Live RoTrends Dry Run
+
+on:
+  push:
+    branches:
+      - improve/scouting-reliability
+    paths:
+      - bot.py
+      - requirements.txt
+      - .github/workflows/live-dry-run.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scrape-without-side-effects:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout development branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Install Chromium for Playwright
+        run: python -m playwright install --with-deps chromium
+      - name: Scrape one live page without Discord or state changes
+        env:
+          DRY_RUN: "true"
+          MAX_PAGES: "1"
+          VERIFY_ROBLOX_VISITS: "false"
+          SEEN_GAMES_FILE: /tmp/rotrends-dry-run-seen-games.json
+        run: python bot.py
