@@ -34,6 +34,14 @@ class ParserTests(unittest.TestCase):
         self.assertFalse(bot.is_excluded("Model Builder"))
         self.assertFalse(bot.is_excluded("Modern Life"))
 
+    def test_creator_validator_rejects_rating_values(self):
+        for value in ("14.8", "10.7", "1,234", "23.9%", "1.2K", "@15.6"):
+            with self.subTest(value=value):
+                self.assertTrue(bot._is_numeric_creator(value))
+        for value in ("Studio Name", "Some Developer", "Builder_123"):
+            with self.subTest(value=value):
+                self.assertFalse(bot._is_numeric_creator(value))
+
     def test_search_url_is_not_treated_as_game_id(self):
         self.assertIsNone(bot._game_id_from_url(
             "https://www.roblox.com/search/experiences?keyword=12345"
