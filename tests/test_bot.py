@@ -12,7 +12,7 @@ class ParserTests(unittest.TestCase):
 
     def test_tiers_keep_original_thresholds(self):
         self.assertEqual(bot.determine_tier(39999, 100)[1], "🏆 GOD TIER")
-        self.assertEqual(bot.determine_tier(40000, 600), None)
+        self.assertIsNone(bot.determine_tier(40000, 599))
         self.assertEqual(bot.determine_tier(99999, 600)[1], "🥇 GREAT GAME")
         self.assertEqual(bot.determine_tier(100000, 800)[1], "🥈 GOOD GAME")
         self.assertEqual(bot.determine_tier(500000, 800)[1], "🥉 MID GAME")
