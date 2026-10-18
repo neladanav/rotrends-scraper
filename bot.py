@@ -70,6 +70,12 @@ def _game_id_from_url(url):
         return None
 
 
+def _is_numeric_creator(candidate):
+    """Reject score/rating values accidentally read from the creator column."""
+    cleaned = re.sub(r"^@", "", str(candidate or "")).strip()
+    return bool(cleaned) and bool(re.fullmatch(r"[\\d,.+%KMBkmb\\s-]+", cleaned))
+
+
 def game_key(game_name, game_url=None):
     stable_id = _game_id_from_url(game_url)
     if stable_id:
