@@ -73,7 +73,7 @@ def _game_id_from_url(url):
 def _is_numeric_creator(candidate):
     """Reject score/rating values accidentally read from the creator column."""
     cleaned = re.sub(r"^@", "", str(candidate or "")).strip()
-    return bool(cleaned) and bool(re.fullmatch(r"[\\d,.+%KMBkmb\\s-]+", cleaned))
+    return bool(cleaned) and bool(re.fullmatch(r"[\d,.+%KMBkmb\s-]+", cleaned))
 
 
 def game_key(game_name, game_url=None):
@@ -302,7 +302,7 @@ def main():
                                 cleaned = re.sub(r"^@", "", candidate).strip()
                                 # Some RoTrends table layouts put rating/score values in this
                                 # column rather than a creator. Never present a number as a name.
-                                looks_numeric = bool(re.fullmatch(r"[\d,.+%KMBkmb\s-]+", cleaned))
+                                looks_numeric = _is_numeric_creator(cleaned)
                                 if (
                                     cleaned
                                     and not looks_numeric
