@@ -242,14 +242,33 @@ def main():
                             print(f"Skipping row with only {len(cols)} columns.")
                             continue
 
-                        game_name = cols[0].inner_text().strip()
-                        if not game_name or "No data" in game_name:
+                        # Prefer the actual linked game title; React-backed cells can stringify
+                        # structured values as the literal "[object Object]".
+                        game_name = ""
+                        links = cols[0].locator("a")
+                        for index in range(links.count()):
+                            try:
+                                linked_name = links.nth(index).inner_text().strip()
+                            except Exception:
+                                continue
+                            if linked_name and linked_name.casefold() not in {
+                                "[object object]", "object object", "no data"
+                            }:
+                                game_name = linked_name
+                                break
+                        if not game_name:
+                            game_name = cols[0].inner_text().strip()
+                        if (
+                            not game_name
+                            or game_name.casefold() in {"[object object]", "object object"}
+                            or "No data" in game_name
+                        ):
+                            print("Skipping row with an invalid game title.")
                             continue
                         if is_excluded(game_name):
                             continue
 
                         game_url = None
-                        links = cols[0].locator("a")
                         for index in range(links.count()):
                             href = links.nth(index).get_attribute("href")
                             if href and re.search(r"(?:www\.)?roblox\.com/games/\d+", href, re.I):
