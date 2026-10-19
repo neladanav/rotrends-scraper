@@ -25,6 +25,39 @@ class ParserTests(unittest.TestCase):
             "roblox:12345",
         )
 
+    def test_duplicate_detection_matches_stable_game_id_even_if_title_changes(self):
+        seen = {"roblox:12345"}
+        self.assertTrue(
+            bot.is_game_already_seen(
+                "Renamed Experience",
+                "https://www.roblox.com/games/12345/Renamed-Experience",
+                seen,
+            )
+        )
+
+    def test_duplicate_detection_supports_legacy_title_keys(self):
+        seen = {"name:my game"}
+        self.assertTrue(bot.is_game_already_seen("MY   GAME", None, seen))
+
+    def test_duplicate_detection_catches_repeat_within_same_run(self):
+        self.assertTrue(
+            bot.is_game_already_seen(
+                "Example",
+                "https://www.roblox.com/games/12345/Example",
+                set(),
+                {"roblox:12345"},
+            )
+        )
+
+    def test_duplicate_detection_does_not_match_unrelated_game_id(self):
+        self.assertFalse(
+            bot.is_game_already_seen(
+                "Example",
+                "https://www.roblox.com/games/12345/Example",
+                {"roblox:67890"},
+            )
+        )
+
     def test_name_fallback_is_case_insensitive(self):
         self.assertEqual(bot.game_key("  My   Game "), "name:my game")
         self.assertEqual(bot.game_key("MY GAME"), "name:my game")
