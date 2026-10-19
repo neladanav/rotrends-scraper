@@ -438,7 +438,7 @@ def main():
                             for creator_index in range(title_links.count()):
                                 creator_link = title_links.nth(creator_index)
                                 href = creator_link.get_attribute("href") or ""
-                                if re.search(r"/(users|groups)/\\d+", href, re.I):
+                                if re.search(r"/(users|groups)/\d+", href, re.I):
                                     for attr in ("aria-label", "title"):
                                         attr_value = creator_link.get_attribute(attr)
                                         if attr_value:
