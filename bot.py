@@ -192,7 +192,10 @@ def save_scan_cursor(next_page):
 def select_pages(next_page, pages_per_run, max_page):
     """Scan page 1 every run plus a bounded rotating window of deeper pages."""
     max_page = max(2, int(max_page))
-    pages_per_run = max(1, int(pages_per_run))
+    # There are only max_page unique pages in the bounded scan (page 1 plus
+    # pages 2..max_page). Clamp the request so invalid configuration cannot
+    # make the selection loop run forever trying to collect duplicate pages.
+    pages_per_run = min(max_page, max(1, int(pages_per_run)))
     cursor = int(next_page)
     if cursor < 2 or cursor > max_page:
         cursor = 2
