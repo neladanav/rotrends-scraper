@@ -44,14 +44,14 @@ class ParserTests(unittest.TestCase):
 
     def test_creator_extracted_from_title_cell(self):
         self.assertEqual(
-            bot.extract_creator_from_title_cell("Example Game\\n@ExampleStudio"),
+            bot.extract_creator_from_title_cell("Example Game\n@ExampleStudio"),
             "ExampleStudio",
         )
         self.assertIsNone(
-            bot.extract_creator_from_title_cell("Example Game\\n14.8")
+            bot.extract_creator_from_title_cell("Example Game\n14.8")
         )
         self.assertIsNone(
-            bot.extract_creator_from_title_cell("Example Game\\n@Unknown")
+            bot.extract_creator_from_title_cell("Example Game\n@Unknown")
         )
 
     def test_search_url_is_not_treated_as_game_id(self):
