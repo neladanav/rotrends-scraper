@@ -33,6 +33,7 @@ jobs:
       - name: Scrape one live page without Discord or state changes
         env:
           DRY_RUN: "true"
+          DEBUG_ROW_LAYOUT: "true"
           MAX_PAGES: "1"
           VERIFY_ROBLOX_VISITS: "false"
           SEEN_GAMES_FILE: /tmp/rotrends-dry-run-seen-games.json
