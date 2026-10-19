@@ -351,39 +351,6 @@ def main():
                                 creator = cleaned
                                 break
                         favorites_text = cols[4].inner_text().strip()
-                            try:
-                                creator_candidates.append(creator_cell.inner_text().strip())
-                            except Exception:
-                                pass
-                            try:
-                                creator_links = creator_cell.locator("a")
-                                for creator_index in range(creator_links.count()):
-                                    creator_link = creator_links.nth(creator_index)
-                                    for attr in ("aria-label", "title"):
-                                        attr_value = creator_link.get_attribute(attr)
-                                        if attr_value:
-                                            creator_candidates.append(attr_value.strip())
-                                    try:
-                                        creator_candidates.append(creator_link.inner_text().strip())
-                                    except Exception:
-                                        pass
-                            except Exception:
-                                pass
-                            for candidate in creator_candidates:
-                                cleaned = re.sub(r"^@", "", candidate).strip()
-                                # Some RoTrends table layouts put rating/score values in this
-                                # column rather than a creator. Never present a number as a name.
-                                looks_numeric = _is_numeric_creator(cleaned)
-                                if (
-                                    cleaned
-                                    and not looks_numeric
-                                    and cleaned.casefold() not in {
-                                        "[object object]", "object object", "unknown", "null", "none"
-                                    }
-                                ):
-                                    creator = cleaned
-                                    break
-                        favorites_text = cols[4].inner_text().strip()
                         visits = parse_number(visits_text)
                         active = parse_number(active_text)
                         scanned_count += 1
