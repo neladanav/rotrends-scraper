@@ -42,6 +42,18 @@ class ParserTests(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertFalse(bot._is_numeric_creator(value))
 
+    def test_creator_extracted_from_title_cell(self):
+        self.assertEqual(
+            bot.extract_creator_from_title_cell("Example Game\\n@ExampleStudio"),
+            "ExampleStudio",
+        )
+        self.assertIsNone(
+            bot.extract_creator_from_title_cell("Example Game\\n14.8")
+        )
+        self.assertIsNone(
+            bot.extract_creator_from_title_cell("Example Game\\n@Unknown")
+        )
+
     def test_search_url_is_not_treated_as_game_id(self):
         self.assertIsNone(bot._game_id_from_url(
             "https://www.roblox.com/search/experiences?keyword=12345"
