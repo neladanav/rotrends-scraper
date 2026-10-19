@@ -54,6 +54,32 @@ class ParserTests(unittest.TestCase):
             bot.extract_creator_from_title_cell("Example Game\n@Unknown")
         )
 
+    def test_rotating_page_selection_keeps_page_one_and_advances(self):
+        self.assertEqual(bot.select_pages(2, 2, 20), [1, 2])
+        self.assertEqual(bot.select_pages(3, 2, 20), [1, 3])
+        self.assertEqual(bot.select_pages(20, 2, 20), [1, 20])
+        self.assertEqual(bot.select_pages(20, 3, 20), [1, 20, 2])
+        self.assertEqual(bot.select_pages(0, 2, 20), [1, 2])
+
+    def test_scan_cursor_persists_and_recovers_from_invalid_file(self):
+        import tempfile
+        from pathlib import Path
+
+        original_path = bot.SCAN_CURSOR_FILE
+        original_max = bot.ROTATING_MAX_PAGE
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                bot.SCAN_CURSOR_FILE = Path(tmp) / "cursor.json"
+                bot.ROTATING_MAX_PAGE = 5
+                self.assertEqual(bot.load_scan_cursor(), 2)
+                bot.save_scan_cursor(4)
+                self.assertEqual(bot.load_scan_cursor(), 4)
+                bot.SCAN_CURSOR_FILE.write_text("{broken", encoding="utf-8")
+                self.assertEqual(bot.load_scan_cursor(), 2)
+        finally:
+            bot.SCAN_CURSOR_FILE = original_path
+            bot.ROTATING_MAX_PAGE = original_max
+
     def test_search_url_is_not_treated_as_game_id(self):
         self.assertIsNone(bot._game_id_from_url(
             "https://www.roblox.com/search/experiences?keyword=12345"
