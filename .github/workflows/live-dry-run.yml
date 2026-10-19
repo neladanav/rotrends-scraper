@@ -30,11 +30,11 @@ jobs:
           pip install -r requirements.txt
       - name: Install Chromium for Playwright
         run: python -m playwright install --with-deps chromium
-      - name: Scrape one live page without Discord or state changes
+      - name: Scrape two live pages without Discord or state changes
         env:
           DRY_RUN: "true"
           DEBUG_ROW_LAYOUT: "true"
-          MAX_PAGES: "1"
+          MAX_PAGES: "2"
           VERIFY_ROBLOX_VISITS: "false"
           SEEN_GAMES_FILE: /tmp/rotrends-dry-run-seen-games.json
         run: python bot.py
