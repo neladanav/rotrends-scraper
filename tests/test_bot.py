@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import Mock, patch
 
 import bot
 
@@ -84,6 +85,53 @@ class ParserTests(unittest.TestCase):
         self.assertIsNone(bot._game_id_from_url(
             "https://www.roblox.com/search/experiences?keyword=12345"
         ))
+
+
+    def test_discord_delivery_retries_transient_server_error(self):
+        original_webhook = bot.WEBHOOK_URL
+        bot.WEBHOOK_URL = "https://discord.example/webhook"
+        first = Mock(status_code=500, headers={}, text="temporary error")
+        first.raise_for_status.side_effect = bot.requests.HTTPError("500")
+        second = Mock(status_code=204, headers={}, text="")
+        try:
+            with patch.object(bot.requests, "post", side_effect=[first, second]) as post:
+                with patch.object(bot.time, "sleep") as sleep:
+                    bot.post_discord_alert({"title": "test"})
+            self.assertEqual(post.call_count, 2)
+            sleep.assert_called_once_with(1.0)
+            first.close.assert_called_once()
+            second.close.assert_called_once()
+        finally:
+            bot.WEBHOOK_URL = original_webhook
+
+    def test_discord_delivery_does_not_retry_non_retryable_response(self):
+        original_webhook = bot.WEBHOOK_URL
+        bot.WEBHOOK_URL = "https://discord.example/webhook"
+        response = Mock(status_code=400, headers={}, text="bad request")
+        response.raise_for_status.side_effect = bot.requests.HTTPError("400")
+        try:
+            with patch.object(bot.requests, "post", return_value=response) as post:
+                with patch.object(bot.time, "sleep") as sleep:
+                    with self.assertRaises(bot.requests.HTTPError):
+                        bot.post_discord_alert({"title": "test"})
+            post.assert_called_once()
+            sleep.assert_not_called()
+            response.close.assert_called_once()
+        finally:
+            bot.WEBHOOK_URL = original_webhook
+
+    def test_discord_rate_limit_retry_delay_is_bounded(self):
+        original_webhook = bot.WEBHOOK_URL
+        bot.WEBHOOK_URL = "https://discord.example/webhook"
+        first = Mock(status_code=429, headers={"Retry-After": "99"}, text="rate limited")
+        second = Mock(status_code=204, headers={}, text="")
+        try:
+            with patch.object(bot.requests, "post", side_effect=[first, second]):
+                with patch.object(bot.time, "sleep") as sleep:
+                    bot.post_discord_alert({"title": "test"})
+            sleep.assert_called_once_with(5.0)
+        finally:
+            bot.WEBHOOK_URL = original_webhook
 
 
 if __name__ == "__main__":
