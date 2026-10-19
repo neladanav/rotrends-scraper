@@ -2,6 +2,7 @@ import json
 import os
 import re
 import tempfile
+import time
 from pathlib import Path
 from urllib.parse import quote, urlparse
 
@@ -234,20 +235,50 @@ def verify_roblox_visits(browser, url):
         verify_page.close()
 
 
-def post_discord_alert(alert):
+def post_discord_alert(alert, max_attempts=3):
+    """Deliver an alert, retrying only explicit transient HTTP responses.
+
+    Network exceptions are not retried because Discord may have accepted the
+    request before the connection failed; retrying then could duplicate alerts.
+    """
     if not WEBHOOK_URL:
         raise RuntimeError("DISCORD_WEBHOOK is not configured; refusing to mark alerts as sent.")
-    response = requests.post(
-        WEBHOOK_URL,
-        json={"embeds": [alert]},
-        timeout=REQUEST_TIMEOUT,
-    )
-    try:
-        if response.status_code == 429:
-            print(f"Discord rate limited the webhook: {response.text[:300]}")
-        response.raise_for_status()
-    finally:
-        response.close()
+
+    max_attempts = max(1, int(max_attempts))
+    for attempt in range(1, max_attempts + 1):
+        response = requests.post(
+            WEBHOOK_URL,
+            json={"embeds": [alert]},
+            timeout=REQUEST_TIMEOUT,
+        )
+        try:
+            status = response.status_code
+            if status < 400:
+                return
+
+            retryable = status == 429 or 500 <= status <= 599
+            if not retryable or attempt == max_attempts:
+                if status == 429:
+                    print(f"Discord rate limited the webhook after {attempt} attempt(s): {response.text[:300]}")
+                response.raise_for_status()
+
+            if status == 429:
+                try:
+                    delay = float(response.headers.get("Retry-After", "1"))
+                except (TypeError, ValueError):
+                    delay = 1.0
+                delay = min(max(delay, 0.0), 5.0)
+            else:
+                delay = float(attempt)
+
+            print(
+                f"Discord returned HTTP {status}; retrying alert "
+                f"({attempt + 1}/{max_attempts}) after {delay:g}s."
+            )
+        finally:
+            response.close()
+
+        time.sleep(delay)
 
 
 def get_game_rows(page):
