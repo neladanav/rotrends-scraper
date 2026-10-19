@@ -14,7 +14,9 @@ BASE_URL = (
     "&playing_min=100&page="
 )
 STATE_FILE = Path(os.environ.get("SEEN_GAMES_FILE", "seen_games.json"))
-MAX_PAGES = max(1, int(os.environ.get("MAX_PAGES", "4")))
+SCAN_CURSOR_FILE = Path(os.environ.get("SCAN_CURSOR_FILE", "scan_cursor.json"))
+MAX_PAGES = max(1, int(os.environ.get("MAX_PAGES", "2")))
+ROTATING_MAX_PAGE = max(2, int(os.environ.get("ROTATING_MAX_PAGE", "20")))
 DRY_RUN = os.environ.get("DRY_RUN", "").strip().lower() in {"1", "true", "yes", "on"}
 VERIFY_ROBLOX_VISITS = os.environ.get("VERIFY_ROBLOX_VISITS", "true").strip().lower() in {
     "1", "true", "yes", "on"
@@ -139,6 +141,55 @@ def save_seen_games(seen_games):
             os.unlink(temp_path)
 
 
+
+def load_scan_cursor():
+    """Load the next rotating page; missing/corrupt cursor safely starts at page 2."""
+    try:
+        with SCAN_CURSOR_FILE.open("r", encoding="utf-8") as handle:
+            data = json.load(handle)
+        page = int(data.get("next_page", 2)) if isinstance(data, dict) else 2
+        return page if 2 <= page <= ROTATING_MAX_PAGE else 2
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return 2
+
+
+def save_scan_cursor(next_page):
+    """Persist the next rotating page atomically between scheduled runs."""
+    page = int(next_page)
+    if page < 2 or page > ROTATING_MAX_PAGE:
+        page = 2
+    SCAN_CURSOR_FILE.parent.mkdir(parents=True, exist_ok=True)
+    fd, temp_path = tempfile.mkstemp(
+        prefix=SCAN_CURSOR_FILE.name + ".", suffix=".tmp",
+        dir=str(SCAN_CURSOR_FILE.parent),
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump({"version": 1, "next_page": page}, handle, indent=2)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_path, SCAN_CURSOR_FILE)
+    finally:
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+
+
+def select_pages(next_page, pages_per_run, max_page):
+    """Scan page 1 every run plus a bounded rotating window of deeper pages."""
+    max_page = max(2, int(max_page))
+    pages_per_run = max(1, int(pages_per_run))
+    cursor = int(next_page)
+    if cursor < 2 or cursor > max_page:
+        cursor = 2
+    pages = [1]
+    while len(pages) < pages_per_run:
+        if cursor not in pages:
+            pages.append(cursor)
+        cursor = 2 if cursor >= max_page else cursor + 1
+    return pages
+
+
 def is_excluded(game_name):
     """Use token boundaries to avoid excluding normal names containing 'mod'."""
     normalized = _normalize_name(game_name)
@@ -224,17 +275,20 @@ def main():
     qualified_count = 0
     scanned_count = 0
     pages_read = 0
+    scan_cursor = load_scan_cursor() if not DRY_RUN else 2
+    planned_pages = select_pages(scan_cursor, MAX_PAGES, ROTATING_MAX_PAGE)
+    rotating_pages_completed = 0
 
     print(f"Mode: {'DRY RUN (no Discord messages or state writes)' if DRY_RUN else 'LIVE'}")
-    print(f"Pages configured: {MAX_PAGES}; independent Roblox visit check: {VERIFY_ROBLOX_VISITS}")
+    print(f"Pages this run: {planned_pages} (page 1 stays hot; deeper pages rotate 2-{ROTATING_MAX_PAGE}); independent Roblox visit check: {VERIFY_ROBLOX_VISITS}")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         web_page = browser.new_page()
         try:
-            for page_num in range(1, MAX_PAGES + 1):
+            for page_num in planned_pages:
                 target_url = f"{BASE_URL}{page_num}"
-                print(f"\n--- Loading page {page_num}/{MAX_PAGES} ---")
+                print(f"\n--- Loading RoTrends page {page_num} ---")
                 try:
                     response = web_page.goto(
                         target_url, timeout=30000, wait_until="domcontentloaded"
@@ -250,6 +304,8 @@ def main():
                     break
 
                 pages_read += 1
+                if page_num != 1:
+                    rotating_pages_completed += 1
                 print(f"Found {len(rows)} game rows on page {page_num}.")
                 if not rows:
                     break
@@ -434,6 +490,12 @@ def main():
 
     updated_seen = seen_games | delivered_keys
     save_seen_games(updated_seen)
+    if rotating_pages_completed:
+        next_cursor = scan_cursor
+        for _ in range(rotating_pages_completed):
+            next_cursor = 2 if next_cursor >= ROTATING_MAX_PAGE else next_cursor + 1
+        save_scan_cursor(next_cursor)
+        print(f"Saved rotating scan cursor: next deeper page {next_cursor}.")
     print(
         f"\nScanned {scanned_count} candidate rows; found {qualified_count} eligible game(s); "
         f"successfully sent {alerts_sent} Discord alert(s). Saved {len(updated_seen)} seen-game keys."
