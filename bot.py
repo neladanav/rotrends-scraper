@@ -76,6 +76,25 @@ def _is_numeric_creator(candidate):
     return bool(cleaned) and bool(re.fullmatch(r"[\d,.+%KMBkmb\s-]+", cleaned))
 
 
+def extract_creator_from_title_cell(cell_text):
+    """Extract an explicit @handle shown beneath a RoTrends game title."""
+    lines = str(cell_text or "").splitlines()
+    for line in lines[1:]:
+        candidate = line.strip()
+        if not candidate.startswith("@"):
+            continue
+        cleaned = candidate[1:].strip()
+        if (
+            cleaned
+            and not _is_numeric_creator(cleaned)
+            and cleaned.casefold() not in {
+                "[object object]", "object object", "unknown", "null", "none"
+            }
+        ):
+            return cleaned
+    return None
+
+
 def game_key(game_name, game_url=None):
     stable_id = _game_id_from_url(game_url)
     if stable_id:
@@ -305,11 +324,9 @@ def main():
                         # title in the first cell. Prefer this explicit handle over the
                         # numeric rating/score columns.
                         try:
-                            title_cell_text = cols[0].inner_text()
-                            for line in title_cell_text.splitlines()[1:]:
-                                cleaned_line = line.strip()
-                                if cleaned_line.startswith("@"):
-                                    creator_candidates.append(cleaned_line)
+                            title_cell_creator = extract_creator_from_title_cell(cols[0].inner_text())
+                            if title_cell_creator:
+                                creator_candidates.append(title_cell_creator)
                         except Exception:
                             pass
 
