@@ -79,6 +79,11 @@ def _is_numeric_creator(candidate):
     return bool(cleaned) and bool(re.fullmatch(r"[\d,.+%KMBkmb\s-]+", cleaned))
 
 
+def _is_creator_profile_url(href):
+    """Recognize Roblox user/group profile links in table rows."""
+    return bool(re.search(r"/(users|groups)/\d+", str(href or ""), re.I))
+
+
 def extract_creator_from_title_cell(cell_text):
     """Extract an explicit @handle shown beneath a RoTrends game title."""
     lines = str(cell_text or "").splitlines()
@@ -438,7 +443,7 @@ def main():
                             for creator_index in range(title_links.count()):
                                 creator_link = title_links.nth(creator_index)
                                 href = creator_link.get_attribute("href") or ""
-                                if re.search(r"/(users|groups)/\d+", href, re.I):
+                                if _is_creator_profile_url(href):
                                     for attr in ("aria-label", "title"):
                                         attr_value = creator_link.get_attribute(attr)
                                         if attr_value:
