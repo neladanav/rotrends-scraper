@@ -274,6 +274,7 @@ def main():
     alerts_sent = 0
     qualified_count = 0
     scanned_count = 0
+    seen_skips = 0
     pages_read = 0
     scan_cursor = load_scan_cursor() if not DRY_RUN else 2
     planned_pages = select_pages(scan_cursor, MAX_PAGES, ROTATING_MAX_PAGE)
@@ -369,6 +370,9 @@ def main():
                             or key in delivered_keys
                             or legacy_name_key in delivered_keys
                         ):
+                            seen_skips += 1
+                            if seen_skips <= 5:
+                                print(f"[DEDUP] Already alerted/seen; suppressing repeat: {game_name}")
                             continue
 
                         visits_text = cols[1].inner_text().strip()
