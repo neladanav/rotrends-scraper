@@ -76,6 +76,12 @@ class ParserTests(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertFalse(bot._is_numeric_creator(value))
 
+    def test_creator_profile_url_matcher_accepts_user_and_group_ids(self):
+        self.assertTrue(bot._is_creator_profile_url("https://www.roblox.com/users/123/profile"))
+        self.assertTrue(bot._is_creator_profile_url("/groups/456/example-group"))
+        self.assertFalse(bot._is_creator_profile_url("https://www.roblox.com/games/123/example"))
+        self.assertFalse(bot._is_creator_profile_url("/users/not-a-number/profile"))
+
     def test_creator_extracted_from_title_cell(self):
         self.assertEqual(
             bot.extract_creator_from_title_cell("Example Game\n@ExampleStudio"),
