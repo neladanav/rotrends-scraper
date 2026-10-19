@@ -238,6 +238,10 @@ def main():
                 for row in rows:
                     try:
                         cols = row.locator("td").all()
+                        if DRY_RUN and os.environ.get("DEBUG_ROW_LAYOUT", "").strip().lower() in {"1", "true", "yes"} and scanned_count < 3:
+                            print(f"[DEBUG ROW {scanned_count + 1}] columns=" + repr([cell.inner_text().strip()[:160] for cell in cols]))
+                            if len(cols) > 3:
+                                print(f"[DEBUG CREATOR CELL HTML {scanned_count + 1}] " + cols[3].inner_html()[:1200])
                         if len(cols) < 5:
                             print(f"Skipping row with only {len(cols)} columns.")
                             continue
