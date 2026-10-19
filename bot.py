@@ -510,6 +510,9 @@ def main():
 
                         if DRY_RUN:
                             print(f"[DRY RUN] Eligible: {game_name} | {creator_display} | {award} | visits={visits:g} | CCU={active:g}")
+                            # Treat dry-run candidates as handled for this run so
+                            # repeated table rows are deduplicated without writing state.
+                            delivered_keys.add(key)
                             continue
 
                         try:
