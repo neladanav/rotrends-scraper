@@ -81,6 +81,56 @@ class ParserTests(unittest.TestCase):
             bot.SCAN_CURSOR_FILE = original_path
             bot.ROTATING_MAX_PAGE = original_max
 
+    def test_seen_state_round_trips_atomically(self):
+        from pathlib import Path
+        import tempfile
+
+        original_path = bot.STATE_FILE
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                bot.STATE_FILE = Path(tmp) / "seen.json"
+                expected = {"roblox:123", "name:example"}
+                bot.save_seen_games(expected)
+                self.assertEqual(bot.load_seen_games(), expected)
+                payload = bot.json.loads(bot.STATE_FILE.read_text(encoding="utf-8"))
+                self.assertEqual(payload["version"], 2)
+                self.assertEqual(set(payload["seen"]), expected)
+                self.assertFalse(list(Path(tmp).glob("*.tmp")))
+        finally:
+            bot.STATE_FILE = original_path
+
+    def test_legacy_seen_state_list_is_read_as_name_keys(self):
+        from pathlib import Path
+        import tempfile
+
+        original_path = bot.STATE_FILE
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                bot.STATE_FILE = Path(tmp) / "seen.json"
+                bot.STATE_FILE.write_text('["  Example   Game ", "SECOND"]', encoding="utf-8")
+                self.assertEqual(
+                    bot.load_seen_games(),
+                    {"name:example game", "name:second"},
+                )
+        finally:
+            bot.STATE_FILE = original_path
+
+    def test_corrupt_seen_state_aborts_without_overwriting_file(self):
+        from pathlib import Path
+        import tempfile
+
+        original_path = bot.STATE_FILE
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                bot.STATE_FILE = Path(tmp) / "seen.json"
+                original = "{broken json"
+                bot.STATE_FILE.write_text(original, encoding="utf-8")
+                with self.assertRaisesRegex(RuntimeError, "preserving it and aborting"):
+                    bot.load_seen_games()
+                self.assertEqual(bot.STATE_FILE.read_text(encoding="utf-8"), original)
+        finally:
+            bot.STATE_FILE = original_path
+
     def test_search_url_is_not_treated_as_game_id(self):
         self.assertIsNone(bot._game_id_from_url(
             "https://www.roblox.com/search/experiences?keyword=12345"
