@@ -95,6 +95,11 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(bot.select_pages(20, 3, 20), [1, 20, 2])
         self.assertEqual(bot.select_pages(0, 2, 20), [1, 2])
 
+    def test_page_selection_clamps_to_available_unique_pages(self):
+        self.assertEqual(bot.select_pages(2, 10, 2), [1, 2])
+        self.assertEqual(bot.select_pages(4, 50, 4), [1, 4, 2, 3])
+        self.assertEqual(bot.select_pages(2, 1, 4), [1])
+
     def test_scan_cursor_persists_and_recovers_from_invalid_file(self):
         import tempfile
         from pathlib import Path
