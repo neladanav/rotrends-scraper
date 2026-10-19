@@ -105,6 +105,19 @@ def game_key(game_name, game_url=None):
     return f"name:{_normalize_name(game_name)}"
 
 
+def is_game_already_seen(game_name, game_url, seen_games, delivered_keys=None):
+    """Match stable Roblox IDs and legacy title keys to prevent repeat alerts."""
+    key = game_key(game_name, game_url)
+    legacy_name_key = f"name:{_normalize_name(game_name)}"
+    delivered_keys = delivered_keys or set()
+    return (
+        key in seen_games
+        or legacy_name_key in seen_games
+        or key in delivered_keys
+        or legacy_name_key in delivered_keys
+    )
+
+
 def load_seen_games():
     """Read previous state; accept the old list format without rewriting it yet."""
     if not STATE_FILE.exists():
@@ -395,12 +408,7 @@ def main():
 
                         key = game_key(game_name, game_url)
                         legacy_name_key = f"name:{_normalize_name(game_name)}"
-                        if (
-                            key in seen_games
-                            or legacy_name_key in seen_games
-                            or key in delivered_keys
-                            or legacy_name_key in delivered_keys
-                        ):
+                        if is_game_already_seen(game_name, game_url, seen_games, delivered_keys):
                             seen_skips += 1
                             if seen_skips <= 5:
                                 print(f"[DEDUP] Already alerted/seen; suppressing repeat: {game_name}")
