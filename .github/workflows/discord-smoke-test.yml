@@ -1,0 +1,36 @@
+name: Discord Webhook Smoke Test
+
+on:
+  push:
+    branches:
+      - improve/scouting-reliability
+    paths:
+      - .github/workflows/discord-smoke-test.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  send-test-message:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Send one clearly labeled test message
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "DISCORD_WEBHOOK secret is missing."
+            exit 1
+          fi
+
+          payload='{"embeds":[{"title":"✅ RoTrends Discord webhook test","description":"This is a test message only. The live scraper was NOT run, no game alerts were generated, and no seen-game state was changed.","color":3447003}]}'
+
+          curl --silent --show-error --fail-with-body \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --data "$payload" \
+            "$DISCORD_WEBHOOK"
+
+          echo "Discord accepted the test webhook request."

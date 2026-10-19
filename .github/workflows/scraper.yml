@@ -40,7 +40,7 @@ jobs:
         run: |
           git config --global user.name 'GitHub Action Bot'
           git config --global user.email 'action@github.com'
-          git add seen_games.json || echo "No seen_games file yet"
-          git commit -m "Update seen games list" || echo "No new games to save"
+          git add seen_games.json scan_cursor.json || echo "No state files changed"
+          git commit -m "Update scraper state" || echo "No state changes to save"
           git pull --rebase origin main
           git push
