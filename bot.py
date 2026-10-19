@@ -240,8 +240,7 @@ def main():
                         cols = row.locator("td").all()
                         if DRY_RUN and os.environ.get("DEBUG_ROW_LAYOUT", "").strip().lower() in {"1", "true", "yes"} and scanned_count < 3:
                             print(f"[DEBUG ROW {scanned_count + 1}] columns=" + repr([cell.inner_text().strip()[:160] for cell in cols]))
-                            if len(cols) > 3:
-                                print(f"[DEBUG CREATOR CELL HTML {scanned_count + 1}] " + cols[3].inner_html()[:1200])
+                            print(f"[DEBUG TITLE CELL HTML {scanned_count + 1}] " + cols[0].inner_html()[:1200])
                         if len(cols) < 5:
                             print(f"Skipping row with only {len(cols)} columns.")
                             continue
@@ -300,9 +299,58 @@ def main():
                         visits_text = cols[1].inner_text().strip()
                         active_text = cols[2].inner_text().strip()
                         creator = "Unknown"
+                        creator_candidates = []
+
+                        # RoTrends currently places the creator handle beneath the game
+                        # title in the first cell. Prefer this explicit handle over the
+                        # numeric rating/score columns.
+                        try:
+                            title_cell_text = cols[0].inner_text()
+                            for line in title_cell_text.splitlines()[1:]:
+                                cleaned_line = line.strip()
+                                if cleaned_line.startswith("@"):
+                                    creator_candidates.append(cleaned_line)
+                        except Exception:
+                            pass
+
+                        # Some layouts expose the creator as a linked profile in the title cell.
+                        try:
+                            title_links = cols[0].locator("a")
+                            for creator_index in range(title_links.count()):
+                                creator_link = title_links.nth(creator_index)
+                                href = creator_link.get_attribute("href") or ""
+                                if re.search(r"/(users|groups)/\\d+", href, re.I):
+                                    for attr in ("aria-label", "title"):
+                                        attr_value = creator_link.get_attribute(attr)
+                                        if attr_value:
+                                            creator_candidates.append(attr_value.strip())
+                                    try:
+                                        creator_candidates.append(creator_link.inner_text().strip())
+                                    except Exception:
+                                        pass
+                        except Exception:
+                            pass
+
+                        # Fallback to the historical creator column only when it contains
+                        # a real textual handle, never a score or rating number.
                         if len(cols) > 3:
-                            creator_cell = cols[3]
-                            creator_candidates = []
+                            try:
+                                creator_candidates.append(cols[3].inner_text().strip())
+                            except Exception:
+                                pass
+
+                        for candidate in creator_candidates:
+                            cleaned = re.sub(r"^@", "", candidate).strip()
+                            if (
+                                cleaned
+                                and not _is_numeric_creator(cleaned)
+                                and cleaned.casefold() not in {
+                                    "[object object]", "object object", "unknown", "null", "none"
+                                }
+                            ):
+                                creator = cleaned
+                                break
+                        favorites_text = cols[4].inner_text().strip()
                             try:
                                 creator_candidates.append(creator_cell.inner_text().strip())
                             except Exception:
