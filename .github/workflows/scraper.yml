@@ -18,6 +18,10 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          # A queued dispatch can point at a commit older than the prior run's cursor.
+          # Resolve main when this serialized job starts, not when it was dispatched.
+          ref: main
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
