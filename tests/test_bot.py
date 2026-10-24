@@ -15,6 +15,13 @@ class CollectorTests(unittest.TestCase):
             query=parse_qs(urlparse(bot.page_url(number)).query)
             self.assertEqual(query,{'page':[str(number)],'page_size':['50'],'playing_min':['100'],'visits_max':['500000']})
         self.assertEqual(bot.select_pages(19,2,0),[1,19]);self.assertEqual(bot.select_pages(21,2,0),[1,21]);self.assertEqual(bot.select_pages(20,3,20),[1,20,2])
+    def test_rate_limit_respects_retry_after_before_one_retry(self):
+        from urllib.error import HTTPError
+        from io import BytesIO
+        response=BytesIO(b'{"universeId":123}')
+        with patch.object(bot,'urlopen',side_effect=[HTTPError('https://apis.roblox.com',429,'Limited',{'Retry-After':'5'},None),response]),patch.object(bot.time,'sleep') as sleep:
+            self.assertEqual(bot.request_json('https://apis.roblox.com/universes/v1/places/456/universe')['universeId'],123)
+            sleep.assert_called_once_with(5)
     def test_only_real_roblox_links(self):
         self.assertEqual(bot.place_from_url('https://www.roblox.com/games/123/Test'),123)
         for url in ['https://evil.test/games/123','https://www.roblox.com.evil.test/games/123','https://www.roblox.com/search/experiences?keyword=test']:self.assertIsNone(bot.place_from_url(url))

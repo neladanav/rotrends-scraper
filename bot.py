@@ -4,6 +4,7 @@ import json
 import os
 import re
 import tempfile
+import time
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -27,13 +28,21 @@ class CollectionError(RuntimeError):
 def request_json(url, headers=None, body=None):
     payload = None if body is None else json.dumps(body).encode()
     request = Request(url, data=payload, headers={'Accept':'application/json', **({'Content-Type':'application/json'} if payload else {}), **(headers or {})})
-    try:
-        with urlopen(request, timeout=25) as response:
-            return json.load(response)
-    except HTTPError as error:
-        retry = error.headers.get('Retry-After', '60')
-        # Never include request headers, tokens or provider response bodies in logs.
-        raise CollectionError(f'{urlparse(url).hostname} returned HTTP {error.code}; retry after {retry}s') from None
+    for attempt in range(3):
+        try:
+            with urlopen(request, timeout=25) as response:
+                return json.load(response)
+        except HTTPError as error:
+            retry = error.headers.get('Retry-After', '60')
+            try: seconds = max(1, int(retry))
+            except ValueError: seconds = 60
+            if error.code == 429 and attempt < 2 and seconds <= 30:
+                print(f'{urlparse(url).hostname} is rate limited; respecting its {seconds}s retry delay.')
+                time.sleep(seconds)
+                continue
+            # Never include request headers, tokens or provider bodies in logs.
+            raise CollectionError(f'{urlparse(url).hostname} returned HTTP {error.code}; retry after {retry}s') from None
+
 
 
 def identity_token():
