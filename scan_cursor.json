@@ -1,14 +1,17 @@
 {
   "version": 2,
-  "next_page": 2,
-  "status": "Partial",
+  "next_page": 3,
+  "status": "Completed batch",
   "scan_complete": false,
-  "last_page": 1,
+  "last_page": 2,
   "pages_read": [
-    1
+    1,
+    2
   ],
   "end_detected": false,
-  "last_success": "2026-10-24T06:31:35.045343+00:00",
-  "error": "apis.roblox.com returned HTTP 429; retry after 5s",
-  "last_attempt": "2026-10-24T06:31:38.630578+00:00"
+  "last_success": "2026-10-24T06:46:17.689772+00:00",
+  "error": null,
+  "last_attempt": "2026-10-24T06:31:38.630578+00:00",
+  "last_deep_page": 2,
+  "last_deep_fingerprint": "ef641c64aa652f846c7b97afd9bd0f6bdb1dc785e8e73d29775c6e59fd55072d"
 }
