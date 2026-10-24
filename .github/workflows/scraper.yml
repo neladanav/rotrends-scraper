@@ -5,10 +5,11 @@ on:
 
 concurrency:
   group: scraper-group
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   scrape:
@@ -17,30 +18,26 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
       - name: Ensure browsers are installed
         run: python -m playwright install --with-deps chromium
-
-      - name: Run Scraper
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+      - name: Collect into Scoutbase
         run: python bot.py
-
-      - name: Save new games back to repository
+      - name: Save collection cursor
+        if: ${{ always() }}
         run: |
           git config --global user.name 'GitHub Action Bot'
           git config --global user.email 'action@github.com'
-          git add seen_games.json scan_cursor.json || echo "No state files changed"
-          git commit -m "Update scraper state" || echo "No state changes to save"
+          git add scan_cursor.json
+          if [ -f identity_cache.json ]; then git add identity_cache.json; fi
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Update Scoutbase collection cursor"
           git pull --rebase origin main
           git push
