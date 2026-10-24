@@ -7,6 +7,10 @@ from unittest.mock import patch
 import bot
 
 class CollectorTests(unittest.TestCase):
+    def test_original_title_exclusions_are_preserved(self):
+        for name in ['MODDED Game','Reuploaded place','NSFW','Test release']:
+            self.assertTrue(bot.is_excluded(name))
+        self.assertFalse(bot.is_excluded('My Small Business'));self.assertFalse(bot.is_excluded('Modern Age'))
     def test_numeric_values_and_unknowns(self):
         for value,expected in [('4.4K',4400),('458.2K',458200),('1.2M',1200000),('1,200+',1200),('100',100),('No data',None),('',None),('1,2',None)]:self.assertEqual(bot.parse_number(value),expected)
     def test_filters_and_unbounded_deep_pagination(self):

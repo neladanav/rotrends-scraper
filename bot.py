@@ -20,6 +20,15 @@ IDENTITY_FILE = Path(os.environ.get('IDENTITY_CACHE_FILE', 'identity_cache.json'
 MAX_PAGES = max(1, min(20, int(os.environ.get('MAX_PAGES', '2'))))
 ROTATING_MAX_PAGE = max(0, int(os.environ.get('ROTATING_MAX_PAGE', '0')))
 DRY_RUN = os.environ.get('DRY_RUN', '').lower() in {'1', 'true', 'yes'}
+EXCLUSION_WORDS = ['modded', 'mod', 'reuploaded', 'reupload', 'nsfw', '18+', 'test', 'español', 'русский']
+
+def is_excluded(name):
+    normalized = re.sub(r'\s+', ' ', str(name)).strip().casefold()
+    for word in EXCLUSION_WORDS:
+        if word in {'español', 'русский', 'nsfw', '18+'}:
+            if word in normalized:return True
+        elif re.search(r'(?<!\w)' + re.escape(word) + r'(?!\w)', normalized):return True
+    return False
 
 class CollectionError(RuntimeError):
     pass
@@ -172,10 +181,11 @@ def main():
                     if response and response.status>=400:raise CollectionError(f'RoTrends returned HTTP {response.status}; no retry burst was started.')
                     page.wait_for_timeout(1500)
                     rows=get_game_rows(page);headers=page.locator('table thead th').all_text_contents()
-                    candidates=[parse_row(row,headers) for row in rows]
-                    fingerprint=hashlib.sha256('|'.join(sorted(str(c['placeId']) for c in candidates)).encode()).hexdigest()
+                    parsed_rows=[parse_row(row,headers) for row in rows]
+                    candidates=[candidate for candidate in parsed_rows if not is_excluded(candidate['name'])]
+                    fingerprint=hashlib.sha256('|'.join(sorted(str(c['placeId']) for c in parsed_rows)).encode()).hexdigest()
                     previous=state.get('last_deep_fingerprint')
-                    if candidates and (fingerprint in fingerprints or number>1 and number!=state.get('last_deep_page') and fingerprint==previous):raise CollectionError('Repeated source page detected; scan remains partial.')
+                    if parsed_rows and (fingerprint in fingerprints or number>1 and number!=state.get('last_deep_page') and fingerprint==previous):raise CollectionError('Repeated source page detected; scan remains partial.')
                     fingerprints.add(fingerprint)
                     candidates=list({c['placeId']:c for c in candidates}.values())
                     candidates=[resolve_candidate(c,cache) for c in candidates]
