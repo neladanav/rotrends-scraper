@@ -129,7 +129,12 @@ def get_game_rows(page):
     page.wait_for_selector('table', timeout=15000)
     rows = page.locator('table tbody tr.ant-table-row').all()
     if not rows:
-        rows = [row for row in page.locator('table tbody tr').all() if row.locator('td').count() >= 5]
+        # Ant Design also renders a seven-cell sizing row on empty pages.
+        # It has no game identity and must never enter the legacy-row fallback.
+        layout_classes = {'ant-table-measure-row', 'ant-table-placeholder'}
+        rows = [row for row in page.locator('table tbody tr').all()
+                if not layout_classes.intersection((row.get_attribute('class') or '').split())
+                and row.locator('td').count() >= 5]
     if rows:return rows
     placeholders = page.locator('.ant-table-placeholder,.ant-empty-description').all_text_contents()
     if any(text.strip().lower() in {'no data','no games found','no results'} for text in placeholders):return []

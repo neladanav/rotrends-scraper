@@ -3,10 +3,39 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 import bot
 
 class CollectorTests(unittest.TestCase):
+    def table_page(self, rows, empty_labels=(), game_rows=()):
+        page=Mock()
+        def locator(selector):
+            result=Mock()
+            if selector=='table tbody tr.ant-table-row':result.all.return_value=list(game_rows)
+            elif selector=='table tbody tr':result.all.return_value=list(rows)
+            elif selector=='.ant-table-placeholder,.ant-empty-description':result.all_text_contents.return_value=list(empty_labels)
+            else:raise AssertionError(selector)
+            return result
+        page.locator.side_effect=locator
+        return page
+    def table_row(self, classes='', cells=7):
+        row=Mock();row.get_attribute.return_value=classes;row.locator.return_value.count.return_value=cells
+        return row
+    def test_empty_page_ignores_ant_design_measurement_row(self):
+        sizing=self.table_row('ant-table-measure-row',7)
+        placeholder=self.table_row('ant-table-placeholder',1)
+        page=self.table_page([sizing,placeholder],['No dataNo data','No data'])
+        self.assertEqual(bot.get_game_rows(page),[])
+    def test_layout_row_alone_is_not_a_reliable_empty_page(self):
+        page=self.table_page([self.table_row('ant-table-measure-row',7)])
+        with self.assertRaisesRegex(bot.CollectionError,'reliable empty-page marker'):bot.get_game_rows(page)
+    def test_legacy_game_rows_are_retained_without_layout_rows(self):
+        game=self.table_row('legacy-game-row',7)
+        page=self.table_page([self.table_row('ant-table-measure-row',7),game])
+        self.assertEqual(bot.get_game_rows(page),[game])
+    def test_current_game_rows_are_unchanged(self):
+        game=self.table_row('ant-table-row',7)
+        self.assertEqual(bot.get_game_rows(self.table_page([],game_rows=[game])),[game])
     def test_original_title_exclusions_are_preserved(self):
         for name in ['MODDED Game','Reuploaded place','NSFW','Test release']:
             self.assertTrue(bot.is_excluded(name))
