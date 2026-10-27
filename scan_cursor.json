@@ -1,15 +1,14 @@
 {
   "version": 2,
-  "next_page": 11,
+  "next_page": 2,
   "status": "Completed batch",
-  "scan_complete": false,
-  "last_page": 10,
+  "scan_complete": true,
+  "last_page": 1,
   "pages_read": [
-    1,
-    10
+    1
   ],
-  "end_detected": false,
-  "last_success": "2026-10-27T02:22:58.614469+00:00",
+  "end_detected": true,
+  "last_success": "2026-10-27T02:31:41.883148+00:00",
   "error": null,
   "last_attempt": "2026-10-26T18:16:20.296574+00:00",
   "last_deep_page": 10,
