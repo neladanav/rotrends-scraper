@@ -1,16 +1,17 @@
 {
   "version": 2,
-  "next_page": 6,
-  "status": "Partial",
+  "next_page": 7,
+  "status": "Completed batch",
   "scan_complete": false,
-  "last_page": 1,
+  "last_page": 6,
   "pages_read": [
-    1
+    1,
+    6
   ],
   "end_detected": false,
-  "last_success": "2026-10-29T15:01:53.454786+00:00",
-  "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.rotrends.com/games?page=1&page_size=50&playing_min=100&visits_max=500000\", waiting until \"domcontentloaded\"\n",
+  "last_success": "2026-10-29T15:31:41.908112+00:00",
+  "error": null,
   "last_attempt": "2026-10-29T15:16:50.816254+00:00",
-  "last_deep_page": 5,
-  "last_deep_fingerprint": "d456b653f2919ee5cda27d7cf1aebf32bb321aa885eb233cbc82d85e7e2e4890"
+  "last_deep_page": 6,
+  "last_deep_fingerprint": "cf8b9590322ddd2e0908e7bb13dcb47b37f547e88f0bb9ff366edf37b3c8bb72"
 }
