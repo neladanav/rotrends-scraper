@@ -1,12 +1,33 @@
 import json
 import os
 import tempfile
+import types
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 import bot
 
 class CollectorTests(unittest.TestCase):
+    def run_batch(self, directory, pages, fail_page=None, budget_page=None, delivery=None):
+        state_path=Path(directory)/'cursor.json';cache_path=Path(directory)/'identity.json'
+        page=Mock();page.goto.side_effect=lambda url,**kwargs:Mock(status=200)
+        browser=Mock();browser.new_page.return_value=page
+        runtime=Mock();runtime.chromium.launch.return_value=browser
+        manager=Mock();manager.__enter__=Mock(return_value=runtime);manager.__exit__=Mock(return_value=False)
+        visited=[]
+        def rows(_page):
+            from urllib.parse import parse_qs,urlparse
+            number=int(parse_qs(urlparse(page.goto.call_args.args[0]).query)['page'][0]);visited.append(number)
+            if number==fail_page:raise bot.CollectionError('source failure')
+            if number==budget_page:raise bot.BudgetReached('time budget')
+            return [{'placeId':number*100+i,'name':f'Game {number}-{i}'} for i in range(pages.get(number,2))]
+        module=types.ModuleType('playwright.sync_api');module.sync_playwright=Mock(return_value=manager)
+        with patch.dict('sys.modules',{'playwright.sync_api':module}),patch.object(bot,'STATE_FILE',state_path),patch.object(bot,'IDENTITY_FILE',cache_path),patch.object(bot,'DRY_RUN',False),patch.object(bot,'select_pages',side_effect=lambda n:real_select(n,3,0)),patch.object(bot,'get_game_rows',side_effect=rows),patch.object(bot,'parse_row',side_effect=lambda row,headers:row),patch.object(bot,'resolve_candidate',side_effect=lambda c,cache:{**c,'universeId':c['placeId']+1}),patch.object(bot,'deliver',side_effect=delivery or (lambda payload:{'status':'Queued','queued':len(payload['candidates'])})):
+            try:bot.main()
+            except bot.CollectionError:
+                if fail_page is None and delivery is None:raise
+        return visited,json.loads(state_path.read_text())
+
     def table_page(self, rows, empty_labels=(), game_rows=()):
         page=Mock()
         def locator(selector):
@@ -47,7 +68,8 @@ class CollectorTests(unittest.TestCase):
         for number in [1,2,19,21,101]:
             query=parse_qs(urlparse(bot.page_url(number)).query)
             self.assertEqual(query,{'page':[str(number)],'page_size':['50'],'playing_min':['100'],'visits_max':['500000']})
-        self.assertEqual(bot.select_pages(19,2,0),[1,19]);self.assertEqual(bot.select_pages(21,2,0),[1,21]);self.assertEqual(bot.select_pages(20,3,20),[1,20,2])
+        self.assertEqual(bot.select_pages(19,3,0),[19,20,21]);self.assertEqual(bot.select_pages(21,2,0),[21,22]);self.assertEqual(bot.select_pages(20,3,20),[20,1,2])
+        self.assertEqual([bot.select_pages(n,3,12) for n in [1,4,7,10,13]],[[1,2,3],[4,5,6],[7,8,9],[10,11,12],[1,2,3]])
     def test_rate_limit_respects_retry_after_before_one_retry(self):
         from urllib.error import HTTPError
         from io import BytesIO
@@ -73,4 +95,45 @@ class CollectorTests(unittest.TestCase):
             self.assertEqual(json.loads(path.read_text())['status'],'Partial')
             self.assertNotIn('seen',path.read_text());self.assertNotIn('token',path.read_text())
 
+    def test_consecutive_runs_continue_after_acknowledgment_and_confirmed_end(self):
+        with tempfile.TemporaryDirectory() as directory:
+            visited,state=self.run_batch(directory,{})
+            self.assertEqual(visited,[1,2,3]);self.assertEqual(state['next_page'],4)
+            visited,state=self.run_batch(directory,{})
+            self.assertEqual(visited,[4,5,6]);self.assertEqual(state['next_page'],7)
+            visited,state=self.run_batch(directory,{7:0})
+            self.assertEqual(visited,[7]);self.assertTrue(state['scan_complete']);self.assertEqual(state['next_page'],1)
+            visited,state=self.run_batch(directory,{})
+            self.assertEqual(visited,[1,2,3]);self.assertEqual(state['next_page'],4)
+
+    def test_failed_page_and_budget_resume_without_skipping_acknowledged_pages(self):
+        for kind in ['failure','budget']:
+            with self.subTest(kind=kind),tempfile.TemporaryDirectory() as directory:
+                kwargs={'fail_page':2} if kind=='failure' else {'budget_page':2}
+                visited,state=self.run_batch(directory,{},**kwargs)
+                self.assertEqual(state['next_page'],2);self.assertEqual(state['pages_read'],[1])
+                self.assertEqual(state['status'],'Partial' if kind=='failure' else 'Time budget reached')
+                visited,state=self.run_batch(directory,{})
+                self.assertEqual(visited,[2,3,4]);self.assertEqual(state['next_page'],5)
+
+    def test_no_cursor_advance_after_unconfirmed_delivery(self):
+        for status in ['Paused','Unknown']:
+            with self.subTest(status=status),tempfile.TemporaryDirectory() as directory:
+                bot.atomic_save(Path(directory)/'cursor.json',{'version':2,'next_page':10})
+                visited,state=self.run_batch(directory,{},delivery=lambda payload:{'status':status})
+                self.assertEqual(visited,[10]);self.assertEqual(state['next_page'],10)
+
+    def test_budget_bounds_requests_and_prevents_retry_sleep_over_deadline(self):
+        from urllib.error import HTTPError
+        from io import BytesIO
+        with patch.object(bot,'_deadline',110),patch.object(bot.time,'monotonic',return_value=100),patch.object(bot,'urlopen',return_value=BytesIO(b'{}')) as request:
+            bot.request_json('https://apis.roblox.com')
+            self.assertEqual(request.call_args.kwargs['timeout'],10)
+        with patch.object(bot,'_deadline',110),patch.object(bot.time,'monotonic',return_value=100),patch.object(bot,'urlopen',side_effect=HTTPError('https://apis.roblox.com',429,'Limited',{'Retry-After':'10'},None)),patch.object(bot.time,'sleep') as sleep:
+            with self.assertRaises(bot.BudgetReached):bot.request_json('https://apis.roblox.com')
+            sleep.assert_not_called()
+
+real_select=bot.select_pages
+
 if __name__=='__main__':unittest.main()
+

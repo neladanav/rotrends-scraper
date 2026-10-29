@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import re
+import signal
 import tempfile
 import time
 from datetime import datetime, timezone
@@ -17,8 +18,10 @@ INGEST_URL = 'https://xxuwqkscmxhjgibuhpwc.supabase.co/functions/v1/dt-scout-ing
 AUDIENCE = 'dt-scoutbase-ingest'
 STATE_FILE = Path(os.environ.get('SCAN_CURSOR_FILE', 'scan_cursor.json'))
 IDENTITY_FILE = Path(os.environ.get('IDENTITY_CACHE_FILE', 'identity_cache.json'))
-MAX_PAGES = max(1, min(20, int(os.environ.get('MAX_PAGES', '2'))))
+MAX_PAGES = max(1, min(20, int(os.environ.get('MAX_PAGES', '3'))))
 ROTATING_MAX_PAGE = max(0, int(os.environ.get('ROTATING_MAX_PAGE', '0')))
+RUN_BUDGET_SECONDS = max(30, min(420, int(os.environ.get('RUN_BUDGET_SECONDS', '420'))))
+_deadline = None
 DRY_RUN = os.environ.get('DRY_RUN', '').lower() in {'1', 'true', 'yes'}
 EXCLUSION_WORDS = ['modded', 'mod', 'reuploaded', 'reupload', 'nsfw', '18+', 'test', 'español', 'русский']
 
@@ -34,18 +37,37 @@ class CollectionError(RuntimeError):
     pass
 
 
+class BudgetReached(CollectionError):
+    pass
+
+
+def remaining_seconds():
+    return float('inf') if _deadline is None else _deadline-time.monotonic()
+
+
+def ensure_budget(reserve=0):
+    if remaining_seconds() <= reserve:
+        raise BudgetReached('Collection time budget reached; the next unacknowledged page will resume next run.')
+
+
+def alarm_budget(_signum, _frame):
+    raise BudgetReached('Collection time budget reached; the next unacknowledged page will resume next run.')
+
+
 def request_json(url, headers=None, body=None):
     payload = None if body is None else json.dumps(body).encode()
     request = Request(url, data=payload, headers={'Accept':'application/json', **({'Content-Type':'application/json'} if payload else {}), **(headers or {})})
     for attempt in range(3):
+        ensure_budget()
         try:
-            with urlopen(request, timeout=25) as response:
+            with urlopen(request, timeout=min(25, max(0.1,remaining_seconds()))) as response:
                 return json.load(response)
         except HTTPError as error:
             retry = error.headers.get('Retry-After', '60')
             try: seconds = max(1, int(retry))
             except ValueError: seconds = 60
             if error.code == 429 and attempt < 2 and seconds <= 30:
+                ensure_budget(seconds+5)
                 print(f'{urlparse(url).hostname} is rate limited; respecting its {seconds}s retry delay.')
                 time.sleep(seconds)
                 continue
@@ -117,11 +139,11 @@ def atomic_save(path, body):
 
 
 def select_pages(next_page, count=MAX_PAGES, maximum=ROTATING_MAX_PAGE):
-    cursor = max(2, int(next_page))
-    if maximum and cursor > maximum:cursor = 2
-    pages = [1]
-    for _ in range(min(maximum or count, count)-1):
-        pages.append(cursor); cursor = 2 if maximum and cursor >= maximum else cursor+1
+    cursor = max(1, int(next_page))
+    if maximum and cursor > maximum:cursor = 1
+    pages = []
+    for _ in range(min(maximum or count, count)):
+        pages.append(cursor); cursor = 1 if maximum and cursor >= maximum else cursor+1
     return pages
 
 
@@ -157,6 +179,7 @@ def parse_row(row, headers):
 
 
 def resolve_candidate(candidate, cache):
+    ensure_budget()
     place=str(candidate['placeId']);universe=cache.get(place)
     if not isinstance(universe,int) or universe<=0:
         universe=request_json('https://apis.roblox.com/universes/v1/places/'+place+'/universe').get('universeId')
@@ -171,22 +194,33 @@ def deliver(payload):
 
 
 def main():
+    global _deadline
     from playwright.sync_api import sync_playwright
-    state=read_state(STATE_FILE,{'version':2,'next_page':2});cache=read_state(IDENTITY_FILE,{})
-    planned=select_pages(state.get('next_page',2));fingerprints=set();pages_read=[];queued=0
+    state=read_state(STATE_FILE,{'version':3,'next_page':1});cache=read_state(IDENTITY_FILE,{})
+    planned=select_pages(state.get('next_page',1));fingerprints=set();pages_read=[];queued=0
+    _deadline=time.monotonic()+RUN_BUDGET_SECONDS
+    # GitHub's Linux runner also enforces a hard in-process deadline around slow
+    # browser/response calls. Keep the workflow timeout as a final safety net.
+    previous_alarm = signal.signal(signal.SIGALRM,alarm_budget)
+    signal.alarm(RUN_BUDGET_SECONDS)
     print('Collecting pages '+str(planned)+' with the original visit/player filters. Previously collected games are refreshed again.')
     try:
         with sync_playwright() as runtime:
             browser=runtime.chromium.launch(headless=True)
             try:
                 page=browser.new_page()
+                page.set_default_timeout(5000)
                 for number in planned:
+                    ensure_budget(45)
                     endpoint=page_url(number)
                     response=page.goto(endpoint,timeout=30000,wait_until='domcontentloaded')
                     if response and response.status>=400:raise CollectionError(f'RoTrends returned HTTP {response.status}; no retry burst was started.')
                     page.wait_for_timeout(1500)
                     rows=get_game_rows(page);headers=page.locator('table thead th').all_text_contents()
-                    parsed_rows=[parse_row(row,headers) for row in rows]
+                    parsed_rows=[]
+                    for row in rows:
+                        ensure_budget()
+                        parsed_rows.append(parse_row(row,headers))
                     candidates=[candidate for candidate in parsed_rows if not is_excluded(candidate['name'])]
                     fingerprint=hashlib.sha256('|'.join(sorted(str(c['placeId']) for c in parsed_rows)).encode()).hexdigest()
                     previous=state.get('last_deep_fingerprint')
@@ -202,22 +236,33 @@ def main():
                     if result.get('status')=='Paused':print('Scoutbase collection is paused. Cursor retained.');return
                     if result.get('status')!='Queued':raise CollectionError('Scoutbase did not confirm this page; cursor retained.')
                     queued+=result.get('queued',0);pages_read.append(number)
-                    if not rows:state['next_page']=2
-                    elif number>1:
-                        state['next_page']=2 if ROTATING_MAX_PAGE and number>=ROTATING_MAX_PAGE else number+1
-                        state['last_deep_page']=number;state['last_deep_fingerprint']=fingerprint
-                    state.update(version=2,status='Completed batch',last_page=number,pages_read=pages_read,end_detected=not rows,scan_complete=not rows,last_success=datetime.now(timezone.utc).isoformat(),error=None)
+                    if not rows:state['next_page']=1
+                    else:
+                        state['next_page']=1 if ROTATING_MAX_PAGE and number>=ROTATING_MAX_PAGE else number+1
+                        if number>1:
+                            state['last_deep_page']=number;state['last_deep_fingerprint']=fingerprint
+                    state.update(version=3,status='Completed batch',last_page=number,pages_read=pages_read,end_detected=not rows,scan_complete=not rows,last_success=datetime.now(timezone.utc).isoformat(),error=None)
                     atomic_save(STATE_FILE,state);atomic_save(IDENTITY_FILE,cache)
                     print(f'Page {number}: Scoutbase committed {result.get("queued",0)} canonical candidates for official verification (duplicate delivery: {result.get("duplicate",False)}).')
                     if not rows:break
             finally:browser.close()
         print(f'Batch finished: {len(pages_read)} acknowledged page(s), {queued} candidates staged. Eligibility is decided by Scoutbase using Roblox metrics.')
+    except BudgetReached as error:
+        if not DRY_RUN:
+            state.update(status='Time budget reached',pages_read=pages_read,scan_complete=False,error=None,last_attempt=datetime.now(timezone.utc).isoformat())
+            atomic_save(STATE_FILE,state);atomic_save(IDENTITY_FILE,cache)
+        print(str(error))
     except Exception as error:
         if not DRY_RUN:
             state.update(status='Partial',scan_complete=False,error=str(error)[:500],last_attempt=datetime.now(timezone.utc).isoformat());atomic_save(STATE_FILE,state);atomic_save(IDENTITY_FILE,cache)
         raise CollectionError(str(error)) from None
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM,previous_alarm)
+        _deadline=None
 
 if __name__=='__main__':
     try:main()
     except CollectionError as error:
         print('Collection failed: '+str(error));raise SystemExit(1)
+

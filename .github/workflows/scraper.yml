@@ -33,6 +33,11 @@ jobs:
       - name: Ensure browsers are installed
         run: python -m playwright install --with-deps chromium
       - name: Collect into Scoutbase
+        # Leave time within the existing 10-minute job for committing checkpoints.
+        timeout-minutes: 8
+        env:
+          MAX_PAGES: '3'
+          RUN_BUDGET_SECONDS: '420'
         run: python bot.py
       - name: Save collection cursor
         if: ${{ always() }}
@@ -45,3 +50,4 @@ jobs:
           git commit -m "Update Scoutbase collection cursor"
           git pull --rebase origin main
           git push
+
