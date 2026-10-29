@@ -1,17 +1,16 @@
 {
   "version": 2,
   "next_page": 5,
-  "status": "Completed batch",
+  "status": "Partial",
   "scan_complete": false,
-  "last_page": 4,
+  "last_page": 1,
   "pages_read": [
-    1,
-    4
+    1
   ],
   "end_detected": false,
-  "last_success": "2026-10-29T02:01:56.346689+00:00",
-  "error": null,
-  "last_attempt": "2026-10-28T15:46:38.008714+00:00",
+  "last_success": "2026-10-29T02:16:17.412393+00:00",
+  "error": "RoTrends returned HTTP 500; no retry burst was started.",
+  "last_attempt": "2026-10-29T02:16:18.029429+00:00",
   "last_deep_page": 4,
   "last_deep_fingerprint": "9ec2a0bca3cbaf13ff30dc1bf42335d1ac81cffdeb68f2c3c75d89b0822423d9"
 }
