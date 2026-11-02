@@ -1,17 +1,16 @@
 {
   "version": 3,
-  "next_page": 11,
+  "next_page": 12,
   "status": "Partial",
   "scan_complete": false,
-  "last_page": 10,
+  "last_page": 11,
   "pages_read": [
-    9,
-    10
+    11
   ],
   "end_detected": false,
-  "last_success": "2026-11-02T17:46:23.406853+00:00",
+  "last_success": "2026-11-02T18:31:34.382387+00:00",
   "error": "A game has no reliable Roblox link or title; no title-based identity was invented.",
-  "last_attempt": "2026-11-02T18:16:14.805616+00:00",
-  "last_deep_page": 10,
-  "last_deep_fingerprint": "35fee3cd9a2329d5dcd3ea1eec3aac2d862680c5f2637fe39b70a14d8f384d1c"
+  "last_attempt": "2026-11-02T18:31:37.001808+00:00",
+  "last_deep_page": 11,
+  "last_deep_fingerprint": "e24c8f089f9fa76659d2b9bcba81a02fa80d847f7589655f08220f7fdb00fcdd"
 }
