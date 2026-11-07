@@ -11,7 +11,7 @@
   "end_detected": false,
   "last_success": "2026-11-07T08:01:41.552435+00:00",
   "error": "xxuwqkscmxhjgibuhpwc.supabase.co returned HTTP 503; retry after 60s",
-  "last_attempt": "2026-11-07T08:01:46.483090+00:00",
+  "last_attempt": "2026-11-07T08:16:13.674135+00:00",
   "last_deep_page": 11,
   "last_deep_fingerprint": "18c95c593c4307c49bf83734103c36be37089d6b11030a0e4f65ad7f9eeb0a84"
 }
