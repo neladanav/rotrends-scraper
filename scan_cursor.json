@@ -1,18 +1,18 @@
 {
   "version": 3,
-  "next_page": 10,
+  "next_page": 13,
   "status": "Completed batch",
   "scan_complete": false,
-  "last_page": 9,
+  "last_page": 12,
   "pages_read": [
-    7,
-    8,
-    9
+    10,
+    11,
+    12
   ],
   "end_detected": false,
-  "last_success": "2026-11-12T06:31:37.759393+00:00",
+  "last_success": "2026-11-12T06:46:22.799072+00:00",
   "error": null,
   "last_attempt": "2026-11-11T11:31:28.082303+00:00",
-  "last_deep_page": 9,
-  "last_deep_fingerprint": "28e3ca693c6f46d0b251a8ec4901c1d0ac045653771597afbc23286b28c14296"
+  "last_deep_page": 12,
+  "last_deep_fingerprint": "90af5f88352922f2a3991946bdab4150029b567cb772bd77de1c874261a4dbce"
 }
