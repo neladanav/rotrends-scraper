@@ -1,7 +1,7 @@
 {
   "version": 3,
   "next_page": 19,
-  "status": "Completed batch",
+  "status": "Partial",
   "scan_complete": false,
   "last_page": 18,
   "pages_read": [
@@ -11,8 +11,8 @@
   ],
   "end_detected": false,
   "last_success": "2026-11-15T02:31:41.868215+00:00",
-  "error": null,
-  "last_attempt": "2026-11-13T08:16:19.287194+00:00",
+  "error": "xxuwqkscmxhjgibuhpwc.supabase.co returned HTTP 503; retry after 60s",
+  "last_attempt": "2026-11-15T02:46:33.809324+00:00",
   "last_deep_page": 18,
   "last_deep_fingerprint": "ed6468ab1ed9a7b62275f600c2ef0670ab411959dc0a677e2502f151cda2d27c"
 }
