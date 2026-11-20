@@ -13,6 +13,12 @@ permissions:
 
 jobs:
   scrape:
+    # TEMPORARY SAFETY PAUSE:
+    # Supabase is returning organization-level HTTP 402 service restrictions.
+    # Keep the saved cursor untouched and avoid repeatedly provisioning Chromium
+    # and sending batches that cannot be accepted. Re-enable only after the
+    # Supabase Auth + workspace/ingest APIs pass a live health check.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -50,4 +56,3 @@ jobs:
           git commit -m "Update Scoutbase collection cursor"
           git pull --rebase origin main
           git push
-
