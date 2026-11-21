@@ -13,12 +13,9 @@ permissions:
 
 jobs:
   scrape:
-    # TEMPORARY SAFETY PAUSE:
-    # Supabase is returning organization-level HTTP 402 service restrictions.
-    # Keep the saved cursor untouched and avoid repeatedly provisioning Chromium
-    # and sending batches that cannot be accepted. Re-enable only after the
-    # Supabase Auth + workspace/ingest APIs pass a live health check.
-    if: ${{ false }}
+    # Live collection is gated by a read-only Supabase authorization/RPC preflight.
+    # HTTP 402, database outages, bad routes or unexpected responses stop before
+    # Chromium starts or the source cursor can advance.
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -32,6 +29,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Run scraper unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Verify Supabase database authorization path
+        env:
+          SUPABASE_URL: https://xxuwqkscmxhjgibuhpwc.supabase.co
+        run: python scripts/preflight_supabase.py
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
