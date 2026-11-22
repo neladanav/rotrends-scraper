@@ -1,16 +1,17 @@
 {
   "version": 3,
-  "next_page": 18,
+  "next_page": 20,
   "status": "Partial",
   "scan_complete": false,
-  "last_page": 17,
+  "last_page": 19,
   "pages_read": [
-    17
+    18,
+    19
   ],
   "end_detected": false,
-  "last_success": "2026-11-22T22:31:34.064449+00:00",
-  "error": "RoTrends returned HTTP 429; no retry burst was started.",
-  "last_attempt": "2026-11-22T22:31:34.244399+00:00",
-  "last_deep_page": 17,
-  "last_deep_fingerprint": "b4497dcda06018ee458da31b7b1c482bea15256d064f1f1d90a0a61e6509568d"
+  "last_success": "2026-11-22T22:46:14.781706+00:00",
+  "error": "xxuwqkscmxhjgibuhpwc.supabase.co returned HTTP 503; retry after 60s",
+  "last_attempt": "2026-11-22T22:46:19.797794+00:00",
+  "last_deep_page": 19,
+  "last_deep_fingerprint": "a283f4e737fab64de799c18487e49439ddcc93b3ade11ca7c1d19ad8c8fc379e"
 }
