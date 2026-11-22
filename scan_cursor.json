@@ -1,16 +1,18 @@
 {
   "version": 3,
-  "next_page": 20,
-  "status": "Partial",
-  "scan_complete": false,
-  "last_page": 19,
+  "next_page": 1,
+  "status": "Completed batch",
+  "scan_complete": true,
+  "last_page": 22,
   "pages_read": [
-    19
+    20,
+    21,
+    22
   ],
-  "end_detected": false,
-  "last_success": "2026-11-22T03:31:34.579792+00:00",
-  "error": "RoTrends returned HTTP 429; no retry burst was started.",
+  "end_detected": true,
+  "last_success": "2026-11-22T03:46:28.749204+00:00",
+  "error": null,
   "last_attempt": "2026-11-22T03:31:34.678783+00:00",
-  "last_deep_page": 19,
-  "last_deep_fingerprint": "ef3f1554aecbdb0c4e711eaa4342105769fe8757c8bca4798b80f74776be3798"
+  "last_deep_page": 21,
+  "last_deep_fingerprint": "b92a7073f05e933557058c97f61b7749cb437fa48d1ab334e5e25abe0648f312"
 }
