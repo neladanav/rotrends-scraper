@@ -77,6 +77,15 @@ class CollectorTests(unittest.TestCase):
         with patch.object(bot,'urlopen',side_effect=[HTTPError('https://apis.roblox.com',429,'Limited',{'Retry-After':'5'},None),response]),patch.object(bot.time,'sleep') as sleep:
             self.assertEqual(bot.request_json('https://apis.roblox.com/universes/v1/places/456/universe')['universeId'],123)
             sleep.assert_called_once_with(5)
+    def test_transient_503_retries_same_request_with_bounded_backoff(self):
+        from urllib.error import HTTPError
+        from io import BytesIO
+        response=BytesIO(b'{"status":"Queued"}')
+        with patch.object(bot,'urlopen',side_effect=[HTTPError('https://xxuwqkscmxhjgibuhpwc.supabase.co',503,'Unavailable',{},None),response]) as request,patch.object(bot.time,'sleep') as sleep:
+            self.assertEqual(bot.request_json('https://xxuwqkscmxhjgibuhpwc.supabase.co/functions/v1/dt-scout-ingest')['status'],'Queued')
+            self.assertEqual(request.call_count,2)
+            sleep.assert_called_once_with(5)
+
     def test_only_real_roblox_links(self):
         self.assertEqual(bot.place_from_url('https://www.roblox.com/games/123/Test'),123)
         for url in ['https://evil.test/games/123','https://www.roblox.com.evil.test/games/123','https://www.roblox.com/search/experiences?keyword=test']:self.assertIsNone(bot.place_from_url(url))
