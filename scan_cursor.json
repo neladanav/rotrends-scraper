@@ -1,16 +1,17 @@
 {
   "version": 3,
-  "next_page": 5,
+  "next_page": 7,
   "status": "Partial",
   "scan_complete": false,
-  "last_page": 4,
+  "last_page": 6,
   "pages_read": [
-    4
+    5,
+    6
   ],
   "end_detected": false,
-  "last_success": "2026-11-24T08:46:11.973740+00:00",
+  "last_success": "2026-11-24T09:01:48.668318+00:00",
   "error": "xxuwqkscmxhjgibuhpwc.supabase.co returned HTTP 503; retry after 60s",
-  "last_attempt": "2026-11-24T08:46:16.169857+00:00",
-  "last_deep_page": 4,
-  "last_deep_fingerprint": "7fa8752e92907e99dc4b44935b5408cac9f745f0927f284ffc6d1e179ee942dd"
+  "last_attempt": "2026-11-24T09:01:52.804019+00:00",
+  "last_deep_page": 6,
+  "last_deep_fingerprint": "bf1d205014454bd1910d333ceee52ef41498f171d845cd85d2ed33cc3c32c605"
 }
