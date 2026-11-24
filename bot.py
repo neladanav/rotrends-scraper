@@ -63,16 +63,27 @@ def request_json(url, headers=None, body=None):
             with urlopen(request, timeout=min(25, max(0.1,remaining_seconds()))) as response:
                 return json.load(response)
         except HTTPError as error:
-            retry = error.headers.get('Retry-After', '60')
-            try: seconds = max(1, int(retry))
-            except ValueError: seconds = 60
-            if error.code == 429 and attempt < 2 and seconds <= 30:
+            retry = error.headers.get('Retry-After')
+            if error.code == 429:
+                try: seconds = max(1, int(retry or '60'))
+                except ValueError: seconds = 60
+                if attempt < 2 and seconds <= 30:
+                    ensure_budget(seconds+5)
+                    print(f'{urlparse(url).hostname} is rate limited; respecting its {seconds}s retry delay.')
+                    time.sleep(seconds)
+                    continue
+            elif error.code in {500, 502, 503, 504} and attempt < 2:
+                # A 503 from Scoutbase can be a short-lived database queue/backpressure
+                # response. Re-send the exact same page: ingestion is idempotent by
+                # GitHub run/attempt/page, so an uncertain first response cannot duplicate it.
+                seconds = min(20, 5 * (2 ** attempt))
                 ensure_budget(seconds+5)
-                print(f'{urlparse(url).hostname} is rate limited; respecting its {seconds}s retry delay.')
+                print(f'{urlparse(url).hostname} returned transient HTTP {error.code}; retrying in {seconds}s.')
                 time.sleep(seconds)
                 continue
             # Never include request headers, tokens or provider bodies in logs.
-            raise CollectionError(f'{urlparse(url).hostname} returned HTTP {error.code}; retry after {retry}s') from None
+            retry_text = retry or ('60' if error.code == 429 else 'bounded retry exhausted')
+            raise CollectionError(f'{urlparse(url).hostname} returned HTTP {error.code}; retry after {retry_text}') from None
 
 
 
