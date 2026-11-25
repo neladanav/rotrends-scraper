@@ -67,7 +67,8 @@ class CollectorTests(unittest.TestCase):
         from urllib.parse import parse_qs,urlparse
         for number in [1,2,19,21,101]:
             query=parse_qs(urlparse(bot.page_url(number)).query)
-            self.assertEqual(query,{'page':[str(number)],'page_size':['50'],'playing_min':['100'],'visits_max':['500000']})
+            self.assertEqual(query,{'page':[str(number)],'page_size':['50'],'playing_min':['100']})
+            self.assertNotIn('visits_max',query)
         self.assertEqual(bot.select_pages(19,3,0),[19,20,21]);self.assertEqual(bot.select_pages(21,2,0),[21,22]);self.assertEqual(bot.select_pages(20,3,20),[20,1,2])
         self.assertEqual([bot.select_pages(n,3,12) for n in [1,4,7,10,13]],[[1,2,3],[4,5,6],[7,8,9],[10,11,12],[1,2,3]])
     def test_rate_limit_respects_retry_after_before_one_retry(self):
