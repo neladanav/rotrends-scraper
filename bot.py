@@ -13,12 +13,12 @@ from urllib.error import HTTPError
 from urllib.parse import urlencode, urlparse, parse_qsl, urlunparse
 from urllib.request import Request, urlopen
 
-BASE_URL = 'https://www.rotrends.com/games?page=1&page_size=50&playing_min=100&visits_max=500000'
+BASE_URL = 'https://www.rotrends.com/games?page=1&page_size=50&playing_min=100'
 INGEST_URL = 'https://xxuwqkscmxhjgibuhpwc.supabase.co/functions/v1/dt-scout-ingest'
 AUDIENCE = 'dt-scoutbase-ingest'
 STATE_FILE = Path(os.environ.get('SCAN_CURSOR_FILE', 'scan_cursor.json'))
 IDENTITY_FILE = Path(os.environ.get('IDENTITY_CACHE_FILE', 'identity_cache.json'))
-MAX_PAGES = max(1, min(20, int(os.environ.get('MAX_PAGES', '3'))))
+MAX_PAGES = max(1, min(20, int(os.environ.get('MAX_PAGES', '5'))))
 ROTATING_MAX_PAGE = max(0, int(os.environ.get('ROTATING_MAX_PAGE', '0')))
 RUN_BUDGET_SECONDS = max(30, min(420, int(os.environ.get('RUN_BUDGET_SECONDS', '420'))))
 _deadline = None
