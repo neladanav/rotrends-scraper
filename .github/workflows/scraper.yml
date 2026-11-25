@@ -1,6 +1,9 @@
 name: RoTrends Scraper
 
 on:
+  # GitHub Actions cron is UTC: every 6 hours at minute 17.
+  schedule:
+    - cron: '17 */6 * * *'
   workflow_dispatch:
 
 concurrency:
