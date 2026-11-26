@@ -1,16 +1,14 @@
 {
   "version": 3,
-  "next_page": 22,
+  "next_page": 1,
   "status": "Completed batch",
-  "scan_complete": false,
-  "last_page": 21,
+  "scan_complete": true,
+  "last_page": 22,
   "pages_read": [
-    19,
-    20,
-    21
+    22
   ],
-  "end_detected": false,
-  "last_success": "2026-11-26T22:31:41.632319+00:00",
+  "end_detected": true,
+  "last_success": "2026-11-26T22:46:15.937343+00:00",
   "error": null,
   "last_attempt": "2026-11-26T16:56:41.818773+00:00",
   "last_deep_page": 21,
