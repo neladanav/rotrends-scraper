@@ -1,18 +1,18 @@
 {
   "version": 3,
-  "next_page": 22,
-  "status": "Partial",
-  "scan_complete": false,
-  "last_page": 21,
+  "next_page": 1,
+  "status": "Completed batch",
+  "scan_complete": true,
+  "last_page": 24,
   "pages_read": [
-    19,
-    20,
-    21
+    22,
+    23,
+    24
   ],
-  "end_detected": false,
-  "last_success": "2026-11-28T01:16:53.637481+00:00",
-  "error": "xxuwqkscmxhjgibuhpwc.supabase.co returned HTTP 401; retry after bounded retry exhausted",
+  "end_detected": true,
+  "last_success": "2026-11-28T01:31:39.105657+00:00",
+  "error": null,
   "last_attempt": "2026-11-28T01:28:34.645914+00:00",
-  "last_deep_page": 21,
-  "last_deep_fingerprint": "f2683a34e21feeb68fe10d9941a171c78413c381dec76e87391466be7a9dbb52"
+  "last_deep_page": 23,
+  "last_deep_fingerprint": "4d41be3e193c82dd782dcb5a24813041773b58de56b77752d75cf082b8962bcc"
 }
